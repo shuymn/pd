@@ -217,6 +217,283 @@ title: Doc
 		_ = err
 	})
 
+	t.Run("gitignored directories are skipped", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, ".git/HEAD", "ref: refs/heads/main\n")
+		testutil.WriteFile(t, root, ".gitignore", "/docs/.cache/\n")
+		testutil.WriteFile(t, root, "docs/visible.md", `---
+kind: roadmap
+description: Visible doc
+title: Visible
+---
+`)
+		testutil.WriteFile(t, root, "docs/.cache/ignored.md", `---
+kind: roadmap
+description: Ignored doc
+title: Ignored
+---
+`)
+
+		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
+
+		results, err := s.Scan(t.Context(), nil)
+		if err != nil {
+			t.Fatalf("Scan() error = %v", err)
+		}
+
+		if len(results) != 1 {
+			t.Fatalf("Scan() returned %d results, want 1", len(results))
+		}
+
+		if results[0].Path != "visible.md" {
+			t.Errorf("Path = %q, want %q", results[0].Path, "visible.md")
+		}
+	})
+
+	t.Run("nested gitignore and negation are respected", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, ".git/HEAD", "ref: refs/heads/main\n")
+		testutil.WriteFile(t, root, "docs/team/.gitignore", "*.md\n!keep.md\n")
+		testutil.WriteFile(t, root, "docs/team/keep.md", `---
+kind: adr
+description: Keep doc
+title: Keep
+---
+`)
+		testutil.WriteFile(t, root, "docs/team/drop.md", `---
+kind: adr
+description: Drop doc
+title: Drop
+---
+`)
+		testutil.WriteFile(t, root, "docs/other.md", `---
+kind: adr
+description: Other doc
+title: Other
+---
+`)
+
+		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
+
+		results, err := s.Scan(t.Context(), nil)
+		if err != nil {
+			t.Fatalf("Scan() error = %v", err)
+		}
+
+		if len(results) != 2 {
+			t.Fatalf("Scan() returned %d results, want 2", len(results))
+		}
+
+		if results[0].Path != "other.md" {
+			t.Errorf("results[0].Path = %q, want %q", results[0].Path, "other.md")
+		}
+
+		if results[1].Path != "team/keep.md" {
+			t.Errorf("results[1].Path = %q, want %q", results[1].Path, "team/keep.md")
+		}
+	})
+
+	t.Run("repository root gitignore applies to subdirectory scans", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, ".git/HEAD", "ref: refs/heads/main\n")
+		testutil.WriteFile(t, root, ".gitignore", "/docs/adr/ignored.md\n")
+		testutil.WriteFile(t, root, "docs/adr/kept.md", `---
+kind: adr
+description: Kept doc
+title: Kept
+---
+`)
+		testutil.WriteFile(t, root, "docs/adr/ignored.md", `---
+kind: adr
+description: Ignored doc
+title: Ignored
+---
+`)
+
+		s := discovery.Scanner{Root: filepath.Join(root, "docs", "adr")}
+
+		results, err := s.Scan(t.Context(), nil)
+		if err != nil {
+			t.Fatalf("Scan() error = %v", err)
+		}
+
+		if len(results) != 1 {
+			t.Fatalf("Scan() returned %d results, want 1", len(results))
+		}
+
+		if results[0].Path != "kept.md" {
+			t.Errorf("Path = %q, want %q", results[0].Path, "kept.md")
+		}
+	})
+
+	t.Run("gitignored files are skipped without skipping sibling files", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, ".git/HEAD", "ref: refs/heads/main\n")
+		testutil.WriteFile(t, root, ".gitignore", "/docs/team/ignored.md\n")
+		testutil.WriteFile(t, root, "docs/team/kept.md", `---
+kind: adr
+description: Kept sibling doc
+title: Kept
+---
+`)
+		testutil.WriteFile(t, root, "docs/team/ignored.md", `---
+kind: adr
+description: Ignored sibling doc
+title: Ignored
+---
+`)
+
+		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
+
+		results, err := s.Scan(t.Context(), nil)
+		if err != nil {
+			t.Fatalf("Scan() error = %v", err)
+		}
+
+		if len(results) != 1 {
+			t.Fatalf("Scan() returned %d results, want 1", len(results))
+		}
+
+		if results[0].Path != "team/kept.md" {
+			t.Errorf("Path = %q, want %q", results[0].Path, "team/kept.md")
+		}
+	})
+
+	t.Run("git info exclude is respected", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, ".git/HEAD", "ref: refs/heads/main\n")
+		testutil.WriteFile(t, root, ".git/info/exclude", "docs/excluded.md\n")
+		testutil.WriteFile(t, root, "docs/visible.md", `---
+kind: tooling
+description: Visible doc
+title: Visible
+---
+`)
+		testutil.WriteFile(t, root, "docs/excluded.md", `---
+kind: tooling
+description: Excluded doc
+title: Excluded
+---
+`)
+
+		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
+
+		results, err := s.Scan(t.Context(), nil)
+		if err != nil {
+			t.Fatalf("Scan() error = %v", err)
+		}
+
+		if len(results) != 1 {
+			t.Fatalf("Scan() returned %d results, want 1", len(results))
+		}
+
+		if results[0].Path != "visible.md" {
+			t.Errorf("Path = %q, want %q", results[0].Path, "visible.md")
+		}
+	})
+
+	t.Run("linked worktree gitdir file loads info exclude", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+		repoRoot := filepath.Join(root, "repo")
+
+		testutil.WriteFile(t, repoRoot, ".git", "gitdir: ../git-common/worktrees/repo\n")
+		testutil.WriteFile(t, root, "git-common/worktrees/repo/info/exclude", "docs/excluded.md\n")
+		testutil.WriteFile(t, repoRoot, "docs/visible.md", `---
+kind: tooling
+description: Visible doc
+title: Visible
+---
+`)
+		testutil.WriteFile(t, repoRoot, "docs/excluded.md", `---
+kind: tooling
+description: Excluded doc
+title: Excluded
+---
+`)
+
+		s := discovery.Scanner{Root: filepath.Join(repoRoot, "docs")}
+
+		results, err := s.Scan(t.Context(), nil)
+		if err != nil {
+			t.Fatalf("Scan() error = %v", err)
+		}
+
+		if len(results) != 1 {
+			t.Fatalf("Scan() returned %d results, want 1", len(results))
+		}
+
+		if results[0].Path != "visible.md" {
+			t.Errorf("Path = %q, want %q", results[0].Path, "visible.md")
+		}
+	})
+
+	t.Run("missing root inside git repository returns empty", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, ".git/HEAD", "ref: refs/heads/main\n")
+
+		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
+
+		results, err := s.Scan(t.Context(), nil)
+		if err != nil {
+			t.Fatalf("Scan() error = %v", err)
+		}
+
+		if len(results) != 0 {
+			t.Fatalf("Scan() returned %d results, want 0", len(results))
+		}
+	})
+
+	t.Run("non git directories ignore no files", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, ".gitignore", "/docs/ignored.md\n")
+		testutil.WriteFile(t, root, "docs/kept.md", `---
+kind: roadmap
+description: Kept doc
+title: Kept
+---
+`)
+		testutil.WriteFile(t, root, "docs/ignored.md", `---
+kind: roadmap
+description: Ignored only in git
+title: Ignored
+---
+`)
+
+		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
+
+		results, err := s.Scan(t.Context(), nil)
+		if err != nil {
+			t.Fatalf("Scan() error = %v", err)
+		}
+
+		if len(results) != 2 {
+			t.Fatalf("Scan() returned %d results, want 2", len(results))
+		}
+	})
+
 	t.Run("show returns metadata only", func(t *testing.T) {
 		t.Parallel()
 
@@ -277,6 +554,35 @@ Body content.
 		}
 		if showResult.Body != "# Fallback Title\n\nBody content.\n" {
 			t.Errorf("Body = %q, want %q", showResult.Body, "# Fallback Title\n\nBody content.\n")
+		}
+	})
+
+	t.Run("show returns ignored documents when addressed directly", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, ".git/HEAD", "ref: refs/heads/main\n")
+		testutil.WriteFile(t, root, ".gitignore", "/docs/ignored.md\n")
+		testutil.WriteFile(t, root, "docs/ignored.md", `---
+kind: adr
+description: Ignored doc
+title: Ignored
+---
+Body.
+`)
+
+		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
+
+		showResult, err := s.Show("ignored.md", false)
+		if err != nil {
+			t.Fatalf("Show() error = %v", err)
+		}
+		if showResult == nil {
+			t.Fatal("Show() showResult is nil")
+		}
+		if showResult.Path != "ignored.md" {
+			t.Errorf("Path = %q, want %q", showResult.Path, "ignored.md")
 		}
 	})
 
