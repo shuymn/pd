@@ -192,7 +192,7 @@ title: ADR
 	}
 }
 
-func TestCLI_List_InvalidDoc_StderrDiagnostic(t *testing.T) {
+func TestCLI_List_InvalidDoc_IsSilentWithoutVerbose(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
@@ -216,12 +216,10 @@ Just a heading, no YAML block.
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	err := cmd.Run()
-	if err == nil {
-		t.Fatal("expected non-zero exit when diagnostics are emitted, got success")
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("pd list --json failed: %v\nstderr: %s", err, stderr.String())
 	}
 
-	// stdout should have the valid doc
 	var results []metadata.Result
 
 	if err := json.Unmarshal(stdout.Bytes(), &results); err != nil {
@@ -232,31 +230,12 @@ Just a heading, no YAML block.
 		t.Errorf("got %d valid results, want 1: %v", len(results), results)
 	}
 
-	// stderr should have the diagnostic for the invalid doc
-	stderrBytes := stderr.Bytes()
-	if len(stderrBytes) == 0 {
-		t.Fatal("stderr is empty, want diagnostic JSON")
-	}
-
-	var diag struct {
-		Path   string `json:"path"`
-		Reason string `json:"reason"`
-	}
-
-	if err := json.Unmarshal(bytes.TrimRight(stderrBytes, "\n"), &diag); err != nil {
-		t.Fatalf("unmarshal stderr: %v\nstderr: %s", err, stderrBytes)
-	}
-
-	if diag.Path == "" {
-		t.Error("diag.Path is empty")
-	}
-
-	if diag.Reason == "" {
-		t.Error("diag.Reason is empty")
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
 	}
 }
 
-func TestCLI_List_DiagnosticsAreWrittenAfterStdout(t *testing.T) {
+func TestCLI_List_VerboseWritesDiagnosticsAfterStdout(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
@@ -272,7 +251,7 @@ title: Valid
 Just a heading, no YAML block.
 `)
 
-	cmd := exec.Command(binaryPath, "list", "--json")
+	cmd := exec.Command(binaryPath, "--verbose", "list", "--json")
 	cmd.Dir = root
 
 	var stdout, stderr bytes.Buffer
@@ -280,8 +259,8 @@ Just a heading, no YAML block.
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	if err := cmd.Run(); err == nil {
-		t.Fatal("expected non-zero exit when diagnostics are emitted, got success")
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("pd list --verbose --json failed: %v\nstderr: %s", err, stderr.String())
 	}
 
 	var results []metadata.Result
@@ -332,9 +311,8 @@ func TestCLI_List_AllInvalidScenarios(t *testing.T) {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	err := cmd.Run()
-	if err == nil {
-		t.Fatal("expected non-zero exit when diagnostics are emitted, got success")
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("pd list --json failed: %v\nstderr: %s", err, stderr.String())
 	}
 
 	// No valid results
@@ -348,7 +326,49 @@ func TestCLI_List_AllInvalidScenarios(t *testing.T) {
 		t.Errorf("got %d results, want 0: %v", len(results), results)
 	}
 
-	// 6 diagnostics in stderr (one per line)
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+}
+
+func TestCLI_List_AllInvalidScenarios_VerbosePrintsDiagnostics(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+
+	testutil.WriteFile(t, root, "docs/no-fm.md", "# Just a heading\n\nNo frontmatter.\n")
+	testutil.WriteFile(t, root, "docs/missing-kind.md", "---\ndescription: no kind\ntitle: Test\n---\nBody.\n")
+	testutil.WriteFile(t, root, "docs/bad-kind.md", "---\nkind: blog\ndescription: bad\ntitle: Test\n---\nBody.\n")
+	testutil.WriteFile(
+		t, root,
+		"docs/unknown-field.md",
+		"---\nkind: roadmap\ndescription: test\nextra: not allowed\n---\nBody.\n",
+	)
+	testutil.WriteFile(t, root, "docs/missing-desc.md", "---\nkind: roadmap\ntitle: Test\n---\nBody.\n")
+	testutil.WriteFile(t, root, "docs/no-title-no-h1.md", "---\nkind: roadmap\ndescription: test\n---\nJust content.\n")
+
+	cmd := exec.Command(binaryPath, "--verbose", "list", "--json")
+	cmd.Dir = root
+
+	var stdout, stderr bytes.Buffer
+
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("pd list --verbose --json failed: %v\nstderr: %s", err, stderr.String())
+	}
+
+	var results []metadata.Result
+
+	if err := json.Unmarshal(stdout.Bytes(), &results); err != nil {
+		t.Fatalf("unmarshal stdout: %v\nstdout: %s", err, stdout.String())
+	}
+
+	if len(results) != 0 {
+		t.Errorf("got %d results, want 0: %v", len(results), results)
+	}
+
 	stderrStr := stderr.String()
 	lines := bytes.Split(bytes.TrimRight([]byte(stderrStr), "\n"), []byte("\n"))
 
@@ -554,8 +574,8 @@ Body.
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
 
-		if err := cmd.Run(); err == nil {
-			t.Fatal("expected non-zero exit when diagnostics are emitted, got success")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("pd list --root docs/adr --json failed: %v\nstderr: %s", err, stderr.String())
 		}
 
 		var results []metadata.Result
@@ -569,6 +589,35 @@ Body.
 
 		if results[0].Path != "001.md" {
 			t.Errorf("Path = %q, want %q", results[0].Path, "001.md")
+		}
+
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr = %q, want empty", stderr.String())
+		}
+	})
+
+	t.Run("explicit root keeps diagnostics root-relative in verbose mode", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := exec.Command(binaryPath, "--verbose", "list", "--root", "docs/adr", "--json")
+		cmd.Dir = root
+
+		var stdout, stderr bytes.Buffer
+
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("pd list --root docs/adr --verbose --json failed: %v\nstderr: %s", err, stderr.String())
+		}
+
+		var results []metadata.Result
+		if err := json.Unmarshal(stdout.Bytes(), &results); err != nil {
+			t.Fatalf("unmarshal stdout: %v\nstdout: %s", err, stdout.String())
+		}
+
+		if len(results) != 1 {
+			t.Fatalf("got %d results, want 1", len(results))
 		}
 
 		var diag struct {
@@ -595,8 +644,8 @@ Body.
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
 
-		if err := cmd.Run(); err == nil {
-			t.Fatal("expected non-zero exit when diagnostics are emitted, got success")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("pd list --json failed: %v\nstderr: %s", err, stderr.String())
 		}
 
 		var results []metadata.Result
@@ -610,6 +659,135 @@ Body.
 
 		if results[0].Path != "docs/adr/001.md" {
 			t.Errorf("Path = %q, want %q", results[0].Path, "docs/adr/001.md")
+		}
+
+		if stderr.Len() != 0 {
+			t.Fatalf("stderr = %q, want empty", stderr.String())
+		}
+	})
+}
+
+func TestCLI_List_GitIgnoreContracts(t *testing.T) {
+	t.Parallel()
+
+	t.Run("root gitignore prunes ignored markdown but keeps siblings", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, ".git/HEAD", "ref: refs/heads/main\n")
+		testutil.WriteFile(t, root, ".gitignore", "/docs/.cache/\n/docs/team/ignored.md\n")
+		testutil.WriteFile(t, root, "docs/visible.md", `---
+kind: roadmap
+description: Visible doc
+title: Visible
+---
+`)
+		testutil.WriteFile(t, root, "docs/team/kept.md", `---
+kind: roadmap
+description: Kept sibling doc
+title: Kept
+---
+`)
+		testutil.WriteFile(t, root, "docs/team/ignored.md", `---
+kind: roadmap
+description: Ignored sibling doc
+title: Ignored
+---
+`)
+		testutil.WriteFile(t, root, "docs/.cache/ignored.md", `---
+kind: roadmap
+description: Ignored cache doc
+title: Ignored Cache
+---
+`)
+
+		results, stderr := runList(t, root, "list", "--json")
+
+		if stderr != "" {
+			t.Fatalf("stderr = %q, want empty", stderr)
+		}
+
+		if len(results) != 2 {
+			t.Fatalf("got %d results, want 2: %v", len(results), results)
+		}
+
+		if results[0].Path != "docs/team/kept.md" {
+			t.Errorf("results[0].Path = %q, want %q", results[0].Path, "docs/team/kept.md")
+		}
+
+		if results[1].Path != "docs/visible.md" {
+			t.Errorf("results[1].Path = %q, want %q", results[1].Path, "docs/visible.md")
+		}
+	})
+
+	t.Run("git info exclude hides files from list", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, ".git/HEAD", "ref: refs/heads/main\n")
+		testutil.WriteFile(t, root, ".git/info/exclude", "docs/excluded.md\n")
+		testutil.WriteFile(t, root, "docs/visible.md", `---
+kind: tooling
+description: Visible doc
+title: Visible
+---
+`)
+		testutil.WriteFile(t, root, "docs/excluded.md", `---
+kind: tooling
+description: Excluded doc
+title: Excluded
+---
+`)
+
+		results, stderr := runList(t, root, "list", "--json")
+
+		if stderr != "" {
+			t.Fatalf("stderr = %q, want empty", stderr)
+		}
+
+		if len(results) != 1 {
+			t.Fatalf("got %d results, want 1: %v", len(results), results)
+		}
+
+		if results[0].Path != "docs/visible.md" {
+			t.Errorf("Path = %q, want %q", results[0].Path, "docs/visible.md")
+		}
+	})
+
+	t.Run("repo root gitignore still applies to subtree scans", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, ".git/HEAD", "ref: refs/heads/main\n")
+		testutil.WriteFile(t, root, ".gitignore", "/docs/adr/ignored.md\n")
+		testutil.WriteFile(t, root, "docs/adr/kept.md", `---
+kind: adr
+description: Kept doc
+title: Kept
+---
+`)
+		testutil.WriteFile(t, root, "docs/adr/ignored.md", `---
+kind: adr
+description: Ignored doc
+title: Ignored
+---
+`)
+
+		results, stderr := runList(t, root, "list", "--root", "docs/adr", "--json")
+
+		if stderr != "" {
+			t.Fatalf("stderr = %q, want empty", stderr)
+		}
+
+		if len(results) != 1 {
+			t.Fatalf("got %d results, want 1: %v", len(results), results)
+		}
+
+		if results[0].Path != "kept.md" {
+			t.Errorf("Path = %q, want %q", results[0].Path, "kept.md")
 		}
 	})
 }
@@ -824,6 +1002,49 @@ func TestCLI_Show_NotFound(t *testing.T) {
 	if diag.Reason != "document not found" {
 		t.Errorf("Reason = %q, want %q", diag.Reason, "document not found")
 	}
+}
+
+func TestCLI_Show_IgnoredPathExplicitlySucceeds(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+
+	testutil.WriteFile(t, root, ".git/HEAD", "ref: refs/heads/main\n")
+	testutil.WriteFile(t, root, ".gitignore", "/docs/ignored.md\n/docs/sub/hidden.md\n")
+	testutil.WriteFile(t, root, "docs/ignored.md", `---
+kind: roadmap
+description: Ignored doc
+title: Ignored
+---
+`)
+	testutil.WriteFile(t, root, "docs/sub/hidden.md", `---
+kind: adr
+description: Hidden doc
+title: Hidden
+---
+`)
+
+	t.Run("default root still shows ignored file by explicit path", func(t *testing.T) {
+		t.Parallel()
+
+		var got metadata.Result
+		runShowExpectSuccess(t, root, &got, "show", "docs/ignored.md", "--json")
+
+		if got.Path != "docs/ignored.md" {
+			t.Errorf("Path = %q, want %q", got.Path, "docs/ignored.md")
+		}
+	})
+
+	t.Run("explicit root still shows ignored file by root relative path", func(t *testing.T) {
+		t.Parallel()
+
+		var got metadata.Result
+		runShowExpectSuccess(t, root, &got, "show", "--root", "docs/sub", "hidden.md", "--json")
+
+		if got.Path != "hidden.md" {
+			t.Errorf("Path = %q, want %q", got.Path, "hidden.md")
+		}
+	})
 }
 
 func TestCLI_Show_PathValidation(t *testing.T) {
@@ -1110,4 +1331,51 @@ func runShowExpectDiagnostic(t *testing.T, root, path string, extraArgs ...strin
 	}
 
 	return diag
+}
+
+func runList(t *testing.T, root string, args ...string) ([]metadata.Result, string) {
+	t.Helper()
+
+	cmd := exec.Command(binaryPath, args...)
+	cmd.Dir = root
+
+	var stdout, stderr bytes.Buffer
+
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("pd %v failed: %v\nstderr: %s", args, err, stderr.String())
+	}
+
+	var results []metadata.Result
+	if err := json.Unmarshal(stdout.Bytes(), &results); err != nil {
+		t.Fatalf("unmarshal stdout: %v\nstdout: %s", err, stdout.String())
+	}
+
+	return results, stderr.String()
+}
+
+func runShowExpectSuccess(t *testing.T, root string, target any, args ...string) {
+	t.Helper()
+
+	cmd := exec.Command(binaryPath, args...)
+	cmd.Dir = root
+
+	var stdout, stderr bytes.Buffer
+
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("pd %v failed: %v\nstderr: %s", args, err, stderr.String())
+	}
+
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+
+	if err := json.Unmarshal(stdout.Bytes(), target); err != nil {
+		t.Fatalf("unmarshal stdout: %v\nstdout: %s", err, stdout.String())
+	}
 }

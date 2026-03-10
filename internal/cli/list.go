@@ -58,12 +58,10 @@ func (lc *ListCmd) Run(ctx context.Context, root *Root) error {
 
 	log.WriteOutput(ctx, root.OutputLogger, results)
 
-	if diagnosticErrs != nil {
+	if diagnosticErrs != nil && root.Verbose {
 		for _, diagnosticErr := range diagnosticErrs {
 			log.WriteDiagnostic(ctx, root.DiagnosticLogger, diagnosticErr)
 		}
-
-		return ErrDiagnostics
 	}
 
 	return nil
