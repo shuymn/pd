@@ -62,6 +62,15 @@ frontmatter の整合性と repo-wide な語彙統制を検証できるように
 
 ### Theme
 
+`pd list` の大きい結果集合を段階取得できる公開契約を必要最小限で追加する。
+
+- Outcome: 広い `--root` や多件数結果に対して、agent や CLI 利用者が一括取得前提ではなく複数回に分けて安全に取得できる方向性を持てる。
+- Why it matters: 探索量そのものを抑える手段だけでは、結果集合が依然大きいケースで取得契約の負担が残る可能性がある。段階取得を roadmap に置いておくことで、`--depth` 導入後も不足が残るかを切り分けて判断できる。
+- Horizon: Later
+- Promotion trigger: `--depth` や既存 filter では agent-first な取得体験を十分に下げられず、結果の受け取り方自体を CLI 契約として固定しないと運用が不安定になる段階になったら `Design Doc` 化する。
+
+### Theme
+
 metadata curation を反復実行しやすい自動化経路へ接続する。
 
 - Outcome: stale metadata の見直し、`related` 強化、タグ整備を CLI / skill / subagent から繰り返し実行できる。
