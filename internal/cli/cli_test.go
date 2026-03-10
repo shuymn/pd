@@ -147,6 +147,58 @@ Body content.
 	}
 }
 
+func TestCLI_List_H1Fallback_KeepsCodeSpanText(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+
+	testutil.WriteFile(t, root, "docs/no-title.md", `---
+kind: coding
+description: A coding guide
+---
+# `+"`pd`"+` / Frontmatter
+
+Body content.
+`)
+
+	results, stderr := runList(t, root, "list", "--json")
+	if stderr != "" {
+		t.Errorf("stderr = %q, want empty", stderr)
+	}
+
+	if len(results) != 1 {
+		t.Fatalf("got %d results, want 1", len(results))
+	}
+
+	if results[0].Title != "pd / Frontmatter" {
+		t.Errorf("Title = %q, want %q", results[0].Title, "pd / Frontmatter")
+	}
+}
+
+func TestCLI_List_H1Fallback_KeepsCodeSpanText_Setext(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+
+	fixture := "---\nkind: coding\ndescription: A coding guide\n---\n\n" +
+		"`pd` / Frontmatter\n===================\n\nBody content.\n"
+	testutil.WriteFile(t, root, "docs/no-title.md", fixture)
+
+	results, stderr := runList(t, root, "list", "--json")
+
+	if stderr != "" {
+		t.Errorf("stderr = %q, want empty", stderr)
+	}
+
+	if len(results) != 1 {
+		t.Fatalf("got %d results, want 1", len(results))
+	}
+
+	if results[0].Title != "pd / Frontmatter" {
+		t.Errorf("Title = %q, want %q", results[0].Title, "pd / Frontmatter")
+	}
+}
+
 func TestCLI_List_KindFilter(t *testing.T) {
 	t.Parallel()
 
@@ -1293,6 +1345,45 @@ Body.
 			t.Errorf("Path = %q, want %q", got.Path, "adr/001.md")
 		}
 	})
+}
+
+func TestCLI_Show_H1Fallback_KeepsCodeSpanText(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+
+	testutil.WriteFile(t, root, "docs/doc.md", `---
+kind: coding
+description: A coding guide
+---
+# `+"`pd`"+` / Frontmatter
+
+Body content.
+`)
+
+	var got metadata.Result
+	runShowExpectSuccess(t, root, &got, "show", "docs/doc.md", "--json")
+
+	if got.Title != "pd / Frontmatter" {
+		t.Errorf("Title = %q, want %q", got.Title, "pd / Frontmatter")
+	}
+}
+
+func TestCLI_Show_H1Fallback_KeepsCodeSpanText_Setext(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+
+	fixture := "---\nkind: coding\ndescription: A coding guide\n---\n\n" +
+		"`pd` / Frontmatter\n===================\n\nBody content.\n"
+	testutil.WriteFile(t, root, "docs/doc.md", fixture)
+
+	var got metadata.Result
+	runShowExpectSuccess(t, root, &got, "show", "docs/doc.md", "--json")
+
+	if got.Title != "pd / Frontmatter" {
+		t.Errorf("Title = %q, want %q", got.Title, "pd / Frontmatter")
+	}
 }
 
 func runShowExpectDiagnostic(t *testing.T, root, path string, extraArgs ...string) struct {

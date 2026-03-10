@@ -57,6 +57,24 @@ func TestExtractH1(t *testing.T) {
 			wantTitle: "Title",
 			wantFound: true,
 		},
+		{
+			name:      "ATX h1 with code span",
+			body:      []byte("# `pd` / Frontmatter\n\nSome content."),
+			wantTitle: "pd / Frontmatter",
+			wantFound: true,
+		},
+		{
+			name:      "Setext h1 with code span",
+			body:      []byte("`pd` / Frontmatter\n===================\n\nSome content."),
+			wantTitle: "pd / Frontmatter",
+			wantFound: true,
+		},
+		{
+			name:      "mixed inline content in h1",
+			body:      []byte("# Prefix `pd` suffix\n\nSome content."),
+			wantTitle: "Prefix pd suffix",
+			wantFound: true,
+		},
 	}
 
 	for _, tt := range tests {

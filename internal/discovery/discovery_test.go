@@ -84,6 +84,61 @@ Body content.
 		}
 	})
 
+	t.Run("H1 fallback keeps code span text", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, "docs/no-title.md", `---
+kind: coding
+description: A coding guide
+---
+# `+"`pd`"+` / Frontmatter
+
+Body content.
+`)
+
+		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
+
+		results, err := s.Scan(t.Context(), nil)
+		if err != nil {
+			t.Fatalf("Scan() error = %v", err)
+		}
+
+		if len(results) != 1 {
+			t.Fatalf("Scan() returned %d results, want 1", len(results))
+		}
+
+		if results[0].Title != "pd / Frontmatter" {
+			t.Errorf("Title = %q, want %q", results[0].Title, "pd / Frontmatter")
+		}
+	})
+
+	t.Run("H1 fallback keeps code span text in setext heading", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		fixture := "---\nkind: coding\ndescription: A coding guide\n---\n\n" +
+			"`pd` / Frontmatter\n===================\n\nBody content.\n"
+		testutil.WriteFile(t, root, "docs/no-title.md", fixture)
+
+		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
+
+		results, err := s.Scan(t.Context(), nil)
+		if err != nil {
+			t.Fatalf("Scan() error = %v", err)
+		}
+
+		if len(results) != 1 {
+			t.Fatalf("Scan() returned %d results, want 1", len(results))
+		}
+
+		if results[0].Title != "pd / Frontmatter" {
+			t.Errorf("Title = %q, want %q", results[0].Title, "pd / Frontmatter")
+		}
+	})
+
 	t.Run("kind filter", func(t *testing.T) {
 		t.Parallel()
 
@@ -554,6 +609,92 @@ Body content.
 		}
 		if showResult.Body != "# Fallback Title\n\nBody content.\n" {
 			t.Errorf("Body = %q, want %q", showResult.Body, "# Fallback Title\n\nBody content.\n")
+		}
+	})
+
+	t.Run("show keeps code span text in H1 fallback", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, "docs/doc.md", `---
+kind: coding
+description: A coding guide
+---
+# `+"`pd`"+` / Frontmatter
+
+Body content.
+`)
+
+		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
+
+		showResult, err := s.Show("doc.md", false)
+		if err != nil {
+			t.Fatalf("Show() error = %v", err)
+		}
+
+		if showResult == nil {
+			t.Fatal("Show() showResult is nil")
+		}
+
+		if showResult.Title != "pd / Frontmatter" {
+			t.Errorf("Title = %q, want %q", showResult.Title, "pd / Frontmatter")
+		}
+	})
+
+	t.Run("show keeps code span text in setext H1 fallback", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		fixture := "---\nkind: coding\ndescription: A coding guide\n---\n\n" +
+			"`pd` / Frontmatter\n===================\n\nBody content.\n"
+		testutil.WriteFile(t, root, "docs/doc.md", fixture)
+
+		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
+
+		showResult, err := s.Show("doc.md", false)
+		if err != nil {
+			t.Fatalf("Show() error = %v", err)
+		}
+
+		if showResult == nil {
+			t.Fatal("Show() showResult is nil")
+		}
+
+		if showResult.Title != "pd / Frontmatter" {
+			t.Errorf("Title = %q, want %q", showResult.Title, "pd / Frontmatter")
+		}
+	})
+
+	t.Run("show prefers frontmatter title over H1 fallback with code span", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, "docs/doc.md", `---
+kind: coding
+description: A coding guide
+title: Explicit Title
+---
+# `+"`pd`"+` / Frontmatter
+
+Body content.
+`)
+
+		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
+
+		showResult, err := s.Show("doc.md", false)
+		if err != nil {
+			t.Fatalf("Show() error = %v", err)
+		}
+
+		if showResult == nil {
+			t.Fatal("Show() showResult is nil")
+		}
+
+		if showResult.Title != "Explicit Title" {
+			t.Errorf("Title = %q, want %q", showResult.Title, "Explicit Title")
 		}
 	})
 

@@ -46,10 +46,19 @@ func ExtractH1(body []byte) (string, bool) {
 func extractHeadingText(h *ast.Heading, source []byte) string {
 	var sb strings.Builder
 
-	for c := h.FirstChild(); c != nil; c = c.NextSibling() {
-		if textNode, ok := c.(*ast.Text); ok {
-			sb.Write(textNode.Segment.Value(source))
+	err := ast.Walk(h, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
 		}
+
+		if node, ok := n.(*ast.Text); ok {
+			sb.Write(node.Segment.Value(source))
+		}
+
+		return ast.WalkContinue, nil
+	})
+	if err != nil {
+		return ""
 	}
 
 	return sb.String()
