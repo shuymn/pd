@@ -4,6 +4,14 @@ CLI for progressive discovery of project documents.
 
 `pd` scans Markdown documents under the current directory, reads YAML frontmatter, and outputs structured metadata as JSON.
 
+## `AGENTS.md` / `CLAUDE.md` Integration
+
+Example `AGENTS.md` / `CLAUDE.md` snippet:
+
+```markdown
+- For project document discovery, always run `pd list` first. Read document contents only with `pd show --body <path>` for paths selected from that output.
+```
+
 ## Requirements
 
 - Go 1.25+
