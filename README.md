@@ -1,53 +1,82 @@
 # pd
 
+CLI for progressive discovery of project documents.
 
-This repository was initialized from a Go project template.
+`pd` scans a docs directory in a Git repository, reads YAML frontmatter from Markdown files, and outputs structured metadata as JSON.
 
-Replace this README with project-specific documentation once the repository has a clear purpose, setup flow, and release process.
+## Requirements
 
-## Local Setup
+- Go 1.25+
+- Git repository
 
-Use `task` as the primary entrypoint for local development. After installing the required tools, enable Git hooks:
+## Build
+
+```bash
+task build
+```
+
+## Usage
+
+Run `pd` from anywhere inside a Git repository. It automatically finds the repository root.
+
+```
+Usage: pd <command> [flags]
+
+Flags:
+  --root="docs"    Directory to scan, relative to repository root.
+
+Commands:
+  list    List discovery metadata from docs directory.
+```
+
+### `pd list`
+
+Lists all valid documents under `--root` and outputs a JSON array to stdout. Invalid documents are reported as JSON to stderr.
+
+```bash
+pd list
+pd list --kind adr
+pd list --root docs/adr
+```
+
+Valid `--kind` values: `roadmap`, `design-doc`, `adr`, `coding`, `testing`, `tooling`, `review`, `unknown`
+
+**stdout** (success):
+```json
+[
+  {"path": "docs/roadmap.md", "kind": "roadmap", "title": "Roadmap", "description": "..."}
+]
+```
+
+**stderr** (invalid documents, non-fatal):
+```json
+{"path": "docs/draft.md", "reason": "missing required field: kind"}
+```
+
+## Frontmatter Format
+
+Each document must have a YAML frontmatter block:
+
+```markdown
+---
+kind: adr
+title: "Adopt goccy/go-yaml"       # optional — falls back to first H1 heading
+description: "Decision rationale."
+---
+```
+
+## Development
+
+```bash
+task          # list all tasks
+task build    # build binary
+task test     # run tests
+task check    # lint + build + test
+task fmt      # format code
+```
+
+Git hooks are managed with lefthook:
 
 ```bash
 lefthook install
 ```
-
-Useful commands:
-
-```bash
-task
-task build
-task test
-task lint
-task fmt
-task check
-```
-
-## Initial Customization
-
-Before treating this as a real project, update the repository-specific parts:
-
-1. Run template initialization from the repository root. This rewrites template placeholders, refreshes shared workflows, syncs Actions settings, deletes template-only files, and creates a local commit.
-
-```bash
-task -t .taskfiles/template.yml init
-```
-
-2. Replace [`main.go`](main.go) and any starter code with your actual application entrypoint and package layout.
-3. Rewrite this README with your project's purpose, setup, development workflow, and release information.
-4. Review [`AGENTS.md`](AGENTS.md) and [`docs/`](docs/) and keep only the rules and guidance you want in this repository.
-5. Run `task check` before your first project-specific commit.
-
-## Suggested README Sections
-
-When you rewrite this file, include only the sections your project actually needs, for example:
-
-- Project overview
-- Requirements
-- Setup
-- Local development commands
-- Testing
-- Deployment or release process
-- Repository layout
-- Links to deeper docs if needed
