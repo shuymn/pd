@@ -3,6 +3,7 @@
 
 ## Build, Test, and Development Commands
 
+- For project document discovery, always run `pd list` first. Read document contents only with `pd show --body <path>` for paths selected from that output.
 - Use Task (Taskfile.yml) as the default interface; run `task` to list all tasks, `task --summary <name>` for details
 - `task test` — runs with race detection, shuffle, and 10x count
 - `task check` — lint + build + test; run after any code change
