@@ -9,6 +9,7 @@
 - Never edit `go.mod` or `go.sum` manually; use `go get`, `go mod tidy`, etc.
 - `go test -run TestName ./path/to/pkg` to run a single test
 - Prefer `task` to ensure project-local cache paths (`.cache/`) are used; see [ADR-004](docs/adr/004-local-tool-cache.md)
+- Never modify tool configuration files unless explicitly instructed. If a tool error occurs, fix the code — do not relax or bypass the configuration.
 
 ## Git Conventions
 
