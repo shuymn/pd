@@ -2,7 +2,7 @@
 
 Source: [Frontmatter-Based Discovery Entry](docs/frontmatter-discovery-design.md)
 
-- [ ] Theme: metadata 一覧から kind ベースで候補文書を安定選別できる
+- [x] Theme: metadata 一覧から kind ベースで候補文書を安定選別できる
   - Outcome: `pd list --json` が `docs/**/*.md` の discovery metadata を一覧で返し、`pd list --kind <kind> --json` が kind 絞り込み結果を返す。invalid document は stdout に混ざらず stderr JSON で報告される。
   - Why now: discovery reader、frontmatter decode、kind filtering、error contract の設計妥当性をまとめて検証できる最小テーマであり、show 系の前提基盤になる。
   - Verification: static + integration
@@ -13,7 +13,7 @@ Source: [Frontmatter-Based Discovery Entry](docs/frontmatter-discovery-design.md
     - [integration] valid frontmatter を持つ複数文書から metadata 一覧を取得できない
     - [integration] kind で絞り込みできない
     - [integration] malformed frontmatter の文書が stdout に混入する
-    - [integration] missing required field、unknown field、unknown kind、title 不在かつ H1 不在を reject できない
+    - [integration] missing required field、unknown field、invalid kind、title 不在かつ H1 不在を reject できない
     - [integration] invalid document の error が stderr JSON で観測できない
     - [integration] CLI 出力契約が stdout success JSON / stderr error JSON として安定しない
   - Why not split further?: discovery reader と kind filtering は同一の read path 上にあり、reader だけでは外から観測可能な Outcome がない。error contract も list の出力契約と不可分であり、分離すると integration gate が成立しない。
@@ -26,7 +26,7 @@ Source: [Frontmatter-Based Discovery Entry](docs/frontmatter-discovery-design.md
     - [static] show の decode 経路が list と同一の frontmatter schema 型を使わない
     - [integration] pd show --json が metadata のみを返さない
     - [integration] pd show --body が本文まで進めない
-    - [integration] malformed frontmatter、missing required field、unknown field、unknown kind、title 不在かつ H1 不在、対象不在を reject できない
+    - [integration] malformed frontmatter、missing required field、unknown field、invalid kind、title 不在かつ H1 不在、対象不在を reject できない
     - [integration] failure reason が stderr JSON で観測できない
     - [integration] single-document command が non-zero exit で失敗しない
   - Why not split further?: metadata 表示と body escalation は同一 path に対する段階的開示であり、片方だけでは「本文を読む前に metadata で判定する」という Outcome が成立しない。
