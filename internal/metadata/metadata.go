@@ -66,6 +66,12 @@ type Result struct {
 	Description string `json:"description"`
 }
 
+// ShowResult is the output record for a single discovered document including body content.
+type ShowResult struct {
+	Result
+	Body string `json:"body,omitempty"`
+}
+
 // Validate validates the semantic constraints of Metadata.
 // Title presence is the caller's responsibility (H1 fallback interaction).
 // It returns a non-empty reason string when validation fails, and a non-nil error for internal failures.

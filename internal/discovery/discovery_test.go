@@ -1,15 +1,11 @@
 package discovery_test
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"log/slog"
+	"errors"
 	"path/filepath"
-	"strings"
 	"testing"
 
-	"github.com/shuymn/pd/internal/diagnostic"
 	"github.com/shuymn/pd/internal/discovery"
 	"github.com/shuymn/pd/internal/metadata"
 	"github.com/shuymn/pd/internal/testutil"
@@ -49,12 +45,12 @@ Body.
 			t.Fatalf("Scan() returned %d results, want 2", len(results))
 		}
 
-		if results[0].Path != "docs/a-doc.md" {
-			t.Errorf("results[0].Path = %q, want %q", results[0].Path, "docs/a-doc.md")
+		if results[0].Path != "a-doc.md" {
+			t.Errorf("results[0].Path = %q, want %q", results[0].Path, "a-doc.md")
 		}
 
-		if results[1].Path != "docs/z-doc.md" {
-			t.Errorf("results[1].Path = %q, want %q", results[1].Path, "docs/z-doc.md")
+		if results[1].Path != "z-doc.md" {
+			t.Errorf("results[1].Path = %q, want %q", results[1].Path, "z-doc.md")
 		}
 	})
 
@@ -155,40 +151,27 @@ title: ADR
 			"---\nkind: roadmap\ndescription: test\n---\nJust content, no heading.\n",
 		)
 
-		var buf bytes.Buffer
-		h := diagnostic.NewHandler(&buf)
-		s := discovery.Scanner{Root: filepath.Join(root, "docs"), Logger: slog.New(h)}
+		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
 
 		results, err := s.Scan(t.Context(), nil)
-		if err != nil {
-			t.Fatalf("Scan() error = %v", err)
+		var diagnosticErrs discovery.DiagnosticErrors
+		if !errors.As(err, &diagnosticErrs) {
+			t.Fatalf("Scan() error = %v, want DiagnosticErrors", err)
 		}
 
 		if len(results) != 0 {
 			t.Errorf("Scan() returned %d results, want 0: %v", len(results), results)
 		}
 
-		lines := strings.Split(strings.TrimRight(buf.String(), "\n"), "\n")
-		if buf.Len() == 0 {
-			lines = nil
+		if len(diagnosticErrs) != 6 {
+			t.Fatalf("Scan() returned %d diagnostics, want 6", len(diagnosticErrs))
 		}
 
-		if len(lines) != 6 {
-			t.Errorf("Scan() produced %d diagnostic lines, want 6: %q", len(lines), buf.String())
-		}
-
-		for i, line := range lines {
-			var got struct {
-				Path   string `json:"path"`
-				Reason string `json:"reason"`
-			}
-			if err := json.Unmarshal([]byte(line), &got); err != nil {
-				t.Fatalf("line %d is not valid JSON: %v", i, err)
-			}
-			if got.Path == "" {
+		for i, diagnosticErr := range diagnosticErrs {
+			if diagnosticErr.Path == "" {
 				t.Errorf("line %d: Path is empty", i)
 			}
-			if got.Reason == "" {
+			if diagnosticErr.Reason == "" {
 				t.Errorf("line %d: Reason is empty", i)
 			}
 		}
@@ -232,5 +215,181 @@ title: Doc
 		// A cancelled context may or may not produce a walk error depending on
 		// file system timing; we only assert that the call does not panic.
 		_ = err
+	})
+
+	t.Run("show returns metadata only", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, "docs/doc.md", `---
+kind: roadmap
+description: A doc
+title: Explicit Title
+---
+# Body Heading
+
+Body content.
+`)
+
+		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
+
+		showResult, err := s.Show("doc.md", false)
+		if err != nil {
+			t.Fatalf("Show() error = %v", err)
+		}
+		if showResult == nil {
+			t.Fatal("Show() showResult is nil")
+		}
+		if showResult.Title != "Explicit Title" {
+			t.Errorf("Title = %q, want %q", showResult.Title, "Explicit Title")
+		}
+		if showResult.Body != "" {
+			t.Errorf("Body = %q, want empty (includeBody=false)", showResult.Body)
+		}
+	})
+
+	t.Run("show returns metadata and body", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, "docs/doc.md", `---
+kind: adr
+description: A doc
+---
+# Fallback Title
+
+Body content.
+`)
+
+		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
+
+		showResult, err := s.Show("doc.md", true)
+		if err != nil {
+			t.Fatalf("Show() error = %v", err)
+		}
+		if showResult == nil {
+			t.Fatal("Show() showResult is nil")
+		}
+		if showResult.Title != "Fallback Title" {
+			t.Errorf("Title = %q, want %q", showResult.Title, "Fallback Title")
+		}
+		if showResult.Body != "# Fallback Title\n\nBody content.\n" {
+			t.Errorf("Body = %q, want %q", showResult.Body, "# Fallback Title\n\nBody content.\n")
+		}
+	})
+
+	t.Run("show supports nested root", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, "docs/sub/doc.md", `---
+kind: adr
+description: A nested doc
+title: Nested Title
+---
+Body.
+`)
+
+		s := discovery.Scanner{
+			Root: filepath.Join(root, "docs", "sub"),
+		}
+
+		showResult, err := s.Show("doc.md", false)
+		if err != nil {
+			t.Fatalf("Show() error = %v", err)
+		}
+		if showResult == nil {
+			t.Fatal("Show() showResult is nil")
+		}
+		if showResult.Path != "doc.md" {
+			t.Errorf("Path = %q, want %q", showResult.Path, "doc.md")
+		}
+	})
+
+	t.Run("show rejects path outside root", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, "docs/sub/doc.md", `---
+kind: adr
+description: A nested doc
+title: Nested Title
+---
+Body.
+`)
+		testutil.WriteFile(t, root, "docs/other.md", `---
+kind: adr
+description: Another doc
+title: Other Title
+---
+Body.
+`)
+
+		s := discovery.Scanner{
+			Root: filepath.Join(root, "docs", "sub"),
+		}
+
+		showResult, err := s.Show("../other.md", false)
+		var diagnosticErr *discovery.DiagnosticError
+		if !errors.As(err, &diagnosticErr) {
+			t.Fatalf("Show() error = %v, want DiagnosticError", err)
+		}
+		if showResult != nil {
+			t.Fatalf("Show() returned showResult=%#v, want nil", showResult)
+		}
+		if diagnosticErr.Reason != "path is outside discovery root" {
+			t.Errorf("Reason = %q, want %q", diagnosticErr.Reason, "path is outside discovery root")
+		}
+	})
+
+	t.Run("show returns invalid reason", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, "docs/invalid.md", `---
+kind: roadmap
+description: Missing title fallback
+---
+Plain paragraph only.
+`)
+
+		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
+
+		showResult, err := s.Show("invalid.md", false)
+		var diagnosticErr *discovery.DiagnosticError
+		if !errors.As(err, &diagnosticErr) {
+			t.Fatalf("Show() error = %v, want DiagnosticError", err)
+		}
+		if showResult != nil {
+			t.Fatalf("Show() returned showResult=%#v, want nil", showResult)
+		}
+		if diagnosticErr.Path != "invalid.md" {
+			t.Errorf("Path = %q, want %q", diagnosticErr.Path, "invalid.md")
+		}
+	})
+
+	t.Run("show returns not found reason", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
+
+		showResult, err := s.Show("missing.md", false)
+		var diagnosticErr *discovery.DiagnosticError
+		if !errors.As(err, &diagnosticErr) {
+			t.Fatalf("Show() error = %v, want DiagnosticError", err)
+		}
+		if showResult != nil {
+			t.Fatalf("Show() returned showResult=%#v, want nil", showResult)
+		}
+		if diagnosticErr.Reason != "document not found" {
+			t.Errorf("Reason = %q, want %q", diagnosticErr.Reason, "document not found")
+		}
 	})
 }

@@ -8,6 +8,12 @@ import (
 	"sync"
 )
 
+// Record is the machine-readable diagnostic payload written to stderr.
+type Record struct {
+	Path   string `json:"path"`
+	Reason string `json:"reason"`
+}
+
 // Handler is a slog.Handler that writes diagnostic records as JSONL to w.
 // Only records at WARN level or above are written.
 // Each record is written as {"path":"...","reason":"..."}.
@@ -48,10 +54,7 @@ func (h *Handler) Handle(_ context.Context, r slog.Record) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	return h.enc.Encode(struct {
-		Path   string `json:"path"`
-		Reason string `json:"reason"`
-	}{
+	return h.enc.Encode(Record{
 		Path:   path,
 		Reason: reason,
 	})
