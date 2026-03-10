@@ -75,9 +75,14 @@ func (s Scanner) Scan(ctx context.Context, kind *metadata.Kind) ([]metadata.Resu
 	results := make([]metadata.Result, 0)
 	diagnostics := make(DiagnosticErrors, 0)
 
-	walk := s.newWalkFunc(ctx, kind, &results, &diagnostics)
+	ignorer, err := newPathIgnorer(s.Root)
+	if err != nil {
+		return nil, err
+	}
 
-	err := fs.WalkDir(os.DirFS(s.Root), ".", walk)
+	walk := s.newWalkFunc(ctx, ignorer, kind, &results, &diagnostics)
+
+	err = fs.WalkDir(os.DirFS(s.Root), ".", walk)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return results, nil
@@ -148,6 +153,7 @@ func (s Scanner) showFullPath(path string) (string, error) {
 
 func (s Scanner) newWalkFunc(
 	ctx context.Context,
+	ignorer pathIgnorer,
 	kind *metadata.Kind,
 	results *[]metadata.Result,
 	diagnostics *DiagnosticErrors,
@@ -161,7 +167,19 @@ func (s Scanner) newWalkFunc(
 			return walkErr
 		}
 
-		if d.IsDir() || !strings.HasSuffix(path, ".md") {
+		if ignorer.Match(path, d.IsDir()) {
+			if d.IsDir() {
+				return fs.SkipDir
+			}
+
+			return nil
+		}
+
+		if d.IsDir() {
+			return ignorer.EnterDir(path)
+		}
+
+		if !strings.HasSuffix(path, ".md") {
 			return nil
 		}
 
