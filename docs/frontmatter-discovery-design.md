@@ -71,6 +71,8 @@ frontmatter は本文要約の置き場ではなく、LLM や agent が「この
 - `pd show <path> --json`
 - `pd show <path> --body`
 
+`pd` の path surface は常に discovery root 相対とする。`--root` 未指定時は discovery root が current working directory の `.`、`--root` 明示時は指定した subtree になる。`pd show` の入力 path、`pd list` / `pd show` の success metadata、diagnostics の `path` はすべてその discovery root 相対で扱う。
+
 ### Error contract
 
 - invalid document は標準出力に混ぜず、`stderr` に JSON で出す

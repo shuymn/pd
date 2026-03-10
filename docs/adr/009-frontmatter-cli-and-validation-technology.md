@@ -49,6 +49,8 @@ CLI framework 以外の周辺処理は標準ライブラリを優先する。
 - error wrapping
 - output formatting の基本処理
 
+path scope は current working directory 基準で扱う。`--root` の default は `.` とし、`pd show` の `<path>`、`pd list` / `pd show` の success metadata、diagnostics の `path` はすべて選択された discovery root 相対で扱う。`../` による current working directory 外参照は reject し、absolute path は current working directory 配下の場合のみ許可する。
+
 ## Rejected alternatives
 
 - `map[string]any` first で decode して後から整形する
@@ -69,6 +71,8 @@ CLI framework 以外の周辺処理は標準ライブラリを優先する。
 - implementation は typed decode と Go validation を前提に組める
 - unknown field rejection のため追加 YAML dependency が本当に必要かは実装で見極める余地を残せる
 - CLI は `kong` により subcommand / flag 定義を明示できる
+- Git repository 探索を不要にし、current working directory 配下だけを見る単純な CLI 契約にできる
+- `list` / `show` / diagnostics の path surface を常に discovery root 基準に揃えられ、機械処理の接続性を高められる
 - writer / curation helper / `pd related` は実装対象に含めず、read-only discovery に責務を限定できる
 - semantic validation の中心は `kind` と invalid discovery state になり、追加 routing field は別判断として切り離せる
 - 非標準依存の追加は `adrg/frontmatter`、`goldmark`、`kong`、`goccy/go-yaml` に限定され、その他は std 優先で進める

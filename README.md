@@ -2,13 +2,11 @@
 
 CLI for progressive discovery of project documents.
 
-`pd` scans a docs directory in a Git repository, reads YAML frontmatter from Markdown files, and outputs structured metadata as JSON.
+`pd` scans Markdown documents under the current directory, reads YAML frontmatter, and outputs structured metadata as JSON.
 
 ## Requirements
 
 - Go 1.25+
-- Git repository
-
 ## Build
 
 ```bash
@@ -17,16 +15,17 @@ task build
 
 ## Usage
 
-Run `pd` from anywhere inside a Git repository. It automatically finds the repository root.
+Run `pd` from the directory you want to inspect.
 
 ```
 Usage: pd <command> [flags]
 
 Flags:
-  --root="docs"    Directory to scan, relative to repository root.
+  --root="."    Directory to scan, relative to the current directory.
 
 Commands:
   list    List discovery metadata from docs directory.
+  show    Show discovery metadata for a single document.
 ```
 
 ### `pd list`
@@ -51,6 +50,26 @@ Valid `--kind` values: `roadmap`, `design-doc`, `adr`, `coding`, `testing`, `too
 **stderr** (invalid documents, non-fatal):
 ```json
 {"path": "docs/draft.md", "reason": "missing required field: kind"}
+```
+
+### `pd show`
+
+Shows discovery metadata for one document.
+
+```bash
+pd show docs/adr/001.md
+pd show docs/adr/001.md --body
+pd show --root docs/adr 001.md
+```
+
+**stdout** (success):
+```json
+{"path": "001.md", "kind": "adr", "title": "Decision", "description": "..."}
+```
+
+**stderr** (invalid or missing document, fatal):
+```json
+{"path": "001.md", "reason": "document not found"}
 ```
 
 ## Frontmatter Format
