@@ -8,9 +8,9 @@ env:
 
 vars:
   BINARY_NAME: pd
+  BIN_DIR: bin
   BINARY_PATH: "{{.BIN_DIR}}/{{.BINARY_NAME}}"
   COVERAGE_FILE: coverage.out
-  BIN_DIR: bin
   GOLANGCI_LINT_VERSION: v2.11.2
   GITLEAKS_BIN: gitleaks
 
