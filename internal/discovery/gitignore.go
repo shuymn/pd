@@ -29,13 +29,12 @@ func (noopIgnorer) Match(string, bool) bool { return false }
 // eliminating a separate pre-walk pass.
 //
 // NOTE: pointer receivers are required because EnterDir mutates the accumulated
-// pattern list and rebuilds the matcher.
+// pattern groups loaded during the walk.
 type repositoryIgnorer struct {
 	repoRoot         string
 	scanRoot         string
 	scanRootSegments []string
-	patterns         []gitignore.Pattern
-	matcher          gitignore.Matcher
+	patternGroups    [][]gitignore.Pattern
 }
 
 func newPathIgnorer(scanRoot string) (pathIgnorer, error) {
@@ -61,7 +60,7 @@ func newPathIgnorer(scanRoot string) (pathIgnorer, error) {
 		return noopIgnorer{}, nil
 	}
 
-	patterns, err := loadInitialPatterns(repoRoot, gitDir, absScanRoot)
+	initialPatterns, err := loadInitialPatterns(repoRoot, gitDir, absScanRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -75,14 +74,14 @@ func newPathIgnorer(scanRoot string) (pathIgnorer, error) {
 		repoRoot:         repoRoot,
 		scanRoot:         absScanRoot,
 		scanRootSegments: splitRelativePath(relScanRoot),
-		patterns:         patterns,
-		matcher:          gitignore.NewMatcher(patterns),
+		patternGroups:    [][]gitignore.Pattern{initialPatterns},
 	}, nil
 }
 
 // EnterDir loads the .gitignore from the given directory (relative to scanRoot)
-// and updates the matcher. The scanRoot itself is skipped because its .gitignore
-// was already loaded by loadInitialPatterns as part of the ancestor chain.
+// and appends its patterns as a higher-priority group. The scanRoot itself is
+// skipped because its .gitignore was already loaded by loadInitialPatterns as
+// part of the ancestor chain.
 func (ri *repositoryIgnorer) EnterDir(relPath string) error {
 	if relPath == "." {
 		return nil
@@ -103,8 +102,7 @@ func (ri *repositoryIgnorer) EnterDir(relPath string) error {
 		return nil
 	}
 
-	ri.patterns = append(ri.patterns, newPatterns...)
-	ri.matcher = gitignore.NewMatcher(ri.patterns)
+	ri.patternGroups = append(ri.patternGroups, newPatterns)
 	return nil
 }
 
@@ -112,7 +110,21 @@ func (ri *repositoryIgnorer) Match(path string, isDir bool) bool {
 	segments := append([]string{}, ri.scanRootSegments...)
 	segments = append(segments, splitRelativePath(path)...)
 
-	return ri.matcher.Match(segments, isDir)
+	return matchPatternGroups(ri.patternGroups, segments, isDir)
+}
+
+func matchPatternGroups(patternGroups [][]gitignore.Pattern, path []string, isDir bool) bool {
+	for groupIndex := len(patternGroups) - 1; groupIndex >= 0; groupIndex-- {
+		patterns := patternGroups[groupIndex]
+		for patternIndex := len(patterns) - 1; patternIndex >= 0; patternIndex-- {
+			match := patterns[patternIndex].Match(path, isDir)
+			if match > gitignore.NoMatch {
+				return match == gitignore.Exclude
+			}
+		}
+	}
+
+	return false
 }
 
 func findGitWorkTreeRoot(start string) (string, string, bool, error) {
