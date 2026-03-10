@@ -3,6 +3,7 @@
 
 ## Development Style
 
+- Follow the procedure defined in `WORKFLOW.md` unless the user explicitly requests a different workflow.
 - Develop with TDD (exploration → Red → Green → Refactoring).
 - When KPI or coverage targets are given, keep iterating until they are met.
 - If instructions are unclear, ask questions to clarify them.
