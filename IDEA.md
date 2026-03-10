@@ -1,3 +1,8 @@
+---
+kind: unknown
+description: Read when you need background on the pd CLI concept and progressive disclosure design rationale.
+---
+
 # `pd` / Frontmatter / Progressive Disclosure 設計メモ
 
 ## 1. 目的

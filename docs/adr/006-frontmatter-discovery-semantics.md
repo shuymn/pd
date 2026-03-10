@@ -1,3 +1,8 @@
+---
+kind: adr
+description: Read when you need the kind field vocabulary and validation rules for discovery.
+---
+
 # ADR-006: Frontmatter discovery semantics
 
 ## Status

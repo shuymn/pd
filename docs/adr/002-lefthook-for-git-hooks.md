@@ -1,3 +1,8 @@
+---
+kind: adr
+description: Read when you need the rationale for using Lefthook for git hook management.
+---
+
 # ADR-002: Lefthook for git hooks
 
 ## Status

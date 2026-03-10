@@ -1,3 +1,8 @@
+---
+kind: tooling
+description: Read when you need repository-specific tooling pipeline and hook configuration.
+---
+
 # Tooling Pipeline
 
 Use this file only when the task explicitly points to repository-specific tooling flow.

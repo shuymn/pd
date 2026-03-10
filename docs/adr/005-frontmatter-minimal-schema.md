@@ -1,3 +1,8 @@
+---
+kind: adr
+description: Read when you need the required frontmatter fields and schema contract for discovery.
+---
+
 # ADR-005: Frontmatter minimal schema for discovery
 
 ## Status

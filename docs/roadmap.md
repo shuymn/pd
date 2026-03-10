@@ -1,3 +1,8 @@
+---
+kind: roadmap
+description: Read when you need the current project roadmap and next planned themes.
+---
+
 # Roadmap
 
 ## Done

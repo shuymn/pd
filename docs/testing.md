@@ -1,3 +1,8 @@
+---
+kind: testing
+description: Read when you need repository-specific test conventions for structure, naming, and coverage.
+---
+
 # Testing Conventions
 
 Use this file only when the task explicitly points to repository-specific test rules.

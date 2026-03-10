@@ -1,3 +1,8 @@
+---
+kind: adr
+description: Read when you need the rationale for using Task instead of Make as the build tool.
+---
+
 # ADR-001: Task over Make
 
 ## Status

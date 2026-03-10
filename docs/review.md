@@ -1,3 +1,8 @@
+---
+kind: review
+description: Read when you need code review conventions and the review checklist.
+---
+
 # Review Guide
 
 Use this file only for code review or when the user explicitly asks for broader review conventions.

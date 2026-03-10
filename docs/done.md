@@ -1,3 +1,8 @@
+---
+kind: unknown
+description: Read when you need to see which themes have been completed and their verification outcomes.
+---
+
 # Done
 
 Source: [Frontmatter-Based Discovery Entry](docs/frontmatter-discovery-design.md)

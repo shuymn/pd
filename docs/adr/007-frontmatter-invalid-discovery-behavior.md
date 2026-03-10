@@ -1,3 +1,8 @@
+---
+kind: adr
+description: Read when you need the error handling model for invalid documents in list and show commands.
+---
+
 # ADR-007: Invalid frontmatter behavior for discovery commands
 
 ## Status

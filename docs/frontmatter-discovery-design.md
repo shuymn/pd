@@ -1,3 +1,8 @@
+---
+kind: design-doc
+description: Read when you need the full architecture and constraints for the frontmatter discovery entry.
+---
+
 # Design Doc: Frontmatter-Based Discovery Entry
 
 ## Goal

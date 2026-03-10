@@ -1,3 +1,8 @@
+---
+kind: adr
+description: Read when you need the rationale for using log/slog for structured logging.
+---
+
 # ADR-003: slog for structured logging
 
 ## Status

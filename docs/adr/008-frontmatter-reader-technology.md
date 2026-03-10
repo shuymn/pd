@@ -1,3 +1,8 @@
+---
+kind: adr
+description: Read when you need the technology selection for the frontmatter reader and H1 fallback.
+---
+
 # ADR-008: Frontmatter reader technology
 
 ## Status

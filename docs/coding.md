@@ -1,6 +1,6 @@
 ---
 kind: coding
-description: Use this file only when the task explicitly points to repository-specific implementation rules.
+description: Read when you need repository-specific coding conventions for error handling, imports, struct discipline, and receiver naming.
 ---
 
 # Coding Conventions

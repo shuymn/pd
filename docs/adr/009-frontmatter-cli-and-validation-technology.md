@@ -1,3 +1,8 @@
+---
+kind: adr
+description: Read when you need the technology selection for CLI framework, YAML decode, and validation.
+---
+
 # ADR-009: Frontmatter CLI and validation technology
 
 ## Status

@@ -1,3 +1,8 @@
+---
+kind: adr
+description: Read when you need the rationale for using project-local cache paths under .cache/.
+---
+
 # ADR-004: Project-local tool and build cache
 
 ## Status
