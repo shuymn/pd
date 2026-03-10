@@ -72,15 +72,20 @@ linters:
       # Treat config/data boundary structs as explicit contracts so field drift is
       # visible in diffs instead of being masked by zero values.
       include:
-        - 'github\.com/shuymn/go-template/.+\.(Config|Options|Params|Query|Event)$'
+        - 'github\.com/shuymn/pd/.+\.(Config|Options|Params|Query|Event)$'
+        - 'github\.com/shuymn/pd/internal/(metadata|diagnostic|discovery)\.\w+$'
       exclude:
         # Common stdlib/framework structs are intentionally exempt because they
         # are large, evolve outside this repo, and are rarely initialized exhaustively.
-        - '.+/cobra\.Command$'
         - '.*/http\.Request'
         - '.*/http\.Response'
         - '.*/http\.Client'
         - '.*/tls\.Config'
+        # kong structs are framework-managed and not exhaustively initialized.
+        - 'github\.com/alecthomas/kong\..+'
+        # CLI command structs are registered with kong and may omit optional fields.
+        - 'github\.com/shuymn/pd/internal/cli\..*Cmd$'
+        - 'github\.com/shuymn/pd/internal/cli\.Root$'
       allow-empty-returns: true
       allow-empty-declarations: true
 
