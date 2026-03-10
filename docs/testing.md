@@ -25,6 +25,7 @@ Use this file only when the task explicitly points to repository-specific test r
 - Prefer test-scoped helpers: `t.TempDir()`, `t.Setenv()`, `t.Context()` (Go 1.24+), and `t.Cleanup()`.
 - Prefer real resources at package boundaries (`httptest`, temp dirs, subprocesses) over deep mocks.
 - Mock only external systems that cannot be run locally.
+- Before writing setup or assertion boilerplate, look for existing test helpers in the same file and package — reuse them instead of duplicating logic.
 
 ## Linter Exceptions
 
