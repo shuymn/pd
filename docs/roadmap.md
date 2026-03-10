@@ -45,6 +45,15 @@ frontmatter の整合性と repo-wide な語彙統制を検証できるように
 
 ### Theme
 
+`pd` コマンド全般に human-readable 出力を追加する。
+
+- Outcome: `--json` フラグなしで実行したとき、ターミナル向けの読みやすいテキスト形式で結果を表示できる。
+- Why it matters: `--json` は machine / LLM 用途に最適化されているが、人間がターミナルで素早く確認したい場面では raw JSON は読みにくい。
+- Horizon: Later
+- Promotion trigger: 出力フォーマット仕様（カラム幅、省略ルール、カラー対応等）を固定する必要が出たら `Design Doc` 化する。
+
+### Theme
+
 metadata curation を反復実行しやすい自動化経路へ接続する。
 
 - Outcome: stale metadata の見直し、`related` 強化、タグ整備を CLI / skill / subagent から繰り返し実行できる。
