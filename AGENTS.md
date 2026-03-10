@@ -1,6 +1,19 @@
 <!-- Maintenance: Update when tasks, hooks, or project scope changes. -->
 <!-- Audience: All docs under docs/ and this file are written for coding agents (LLMs), not humans. Use direct instructions, not tutorials or explanations of concepts the agent already knows. Apply this rule when creating or updating any documentation. -->
 
+## Development Style
+
+- Develop with TDD (exploration → Red → Green → Refactoring).
+- When KPI or coverage targets are given, keep iterating until they are met.
+- If instructions are unclear, ask questions to clarify them.
+
+## Code Design
+
+- Maintain separation of concerns.
+- Separate state from logic.
+- Prioritize readability and maintainability.
+- Define the contract layer (APIs/types) strictly, and keep the implementation layer regenerable.
+
 ## Build, Test, and Development Commands
 
 - Use Task (Taskfile.yml) as the default interface; run `task` to list all tasks, `task --summary <name>` for details
