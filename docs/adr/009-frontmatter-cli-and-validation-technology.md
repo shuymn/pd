@@ -1,0 +1,66 @@
+# ADR-009: Frontmatter CLI and validation technology
+
+## Status
+
+Accepted
+
+## Context
+
+frontmatter discovery の v1 では `pd list` / `pd show` / `pd related` を実装し、frontmatter schema と invalid state を機械可読に扱う必要がある。
+
+このとき固定すべき論点は次である。
+
+- frontmatter decode を typed contract としてどう扱うか
+- unknown field をどう reject するか
+- semantic validation をどこで表現するか
+- CLI command tree を何で実装するか
+
+ここでも標準ライブラリを第一選択とする。ただし、既に固定された責務を簡潔かつ明示的に実装するための依存は導入してよい。
+
+## Decision
+
+frontmatter の decode は typed Go struct を target に行う。動的 `map[string]any` を中間正本にしない。
+
+semantic validation は decode 後に Go code で実装する。
+
+- required field
+- enum validation
+- `title` 不在時の H1 fallback rule
+- `related` path existence
+- `canonical` conflict
+
+unknown field は invalid discovery state として reject する。
+
+CLI framework は `github.com/alecthomas/kong` を採用する。
+
+YAML 専用ライブラリはこの時点では追加で固定しない。`github.com/adrg/frontmatter` が現在必要な decode path を満たすため、別 YAML dependency は implementation が unknown-field rejection などの既定要件を満たせないと判明した場合にのみ再検討する。
+
+CLI framework 以外の周辺処理は標準ライブラリを優先する。
+
+- filesystem access
+- JSON encoding
+- slices/maps の操作
+- error wrapping
+- output formatting の基本処理
+
+## Rejected alternatives
+
+- `map[string]any` first で decode して後から整形する
+  - schema drift を招きやすく、typed contract が弱いため不採用
+- struct tag だけに validation を寄せる
+  - cross-field rule と filesystem-backed rule を表しきれないため不採用
+- external schema file を追加する
+  - v1 で管理対象を増やしすぎるため不採用
+- YAML 専用 dependency を先に追加する
+  - まだ未充足責務が確認されていないため不採用
+- std で足りる helper に convenience dependency を追加する
+  - taste 由来の依存増加を避けるため不採用
+- standard library のみで subcommand tree を組む
+  - 今回の command tree と flag 契約では `kong` の方が責務を素直に表現できるため不採用
+
+## Consequences
+
+- implementation は typed decode と Go validation を前提に組める
+- unknown field rejection のため追加 YAML dependency が本当に必要かは実装で見極める余地を残せる
+- CLI は `kong` により subcommand / flag 定義を明示できる
+- 非標準依存の追加は `adrg/frontmatter`、`goldmark`、`kong` に限定され、その他は std 優先で進める
