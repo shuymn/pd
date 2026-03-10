@@ -53,6 +53,15 @@ frontmatter の整合性と repo-wide な語彙統制を検証できるように
 
 ### Theme
 
+`XDG_CONFIG_HOME/.pd/config.json` と project local な `.pd/config.json` で `kind` 語彙を決められるようにする。
+
+- Outcome: 実装に埋め込まれた固定語彙だけでなく、利用者単位と repository 単位の設定から `kind` の許容値や運用語彙を定義できる。
+- Why it matters: 現状の固定 `kind` 語彙だけでは project ごとの文書分類を表現しきれず、discovery のために必要な種別を repo 側で拡張できない。
+- Horizon: Later
+- Promotion trigger: global config と project local config のマージ規則、組み込み語彙との関係、validation と discovery 契約への反映範囲を固定しないと repo ごとの差分が実装に漏れ始める段階になったら `Design Doc` 化する。
+
+### Theme
+
 `pd` コマンド全般に human-readable 出力を追加する。
 
 - Outcome: `--json` フラグなしで実行したとき、ターミナル向けの読みやすいテキスト形式で結果を表示できる。
