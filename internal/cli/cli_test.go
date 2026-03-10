@@ -719,6 +719,244 @@ Body.
 	})
 }
 
+func TestCLI_List_Depth(t *testing.T) {
+	t.Parallel()
+
+	t.Run("omitted depth defaults to three", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, "docs/l0.md", `---
+kind: roadmap
+description: Level 0
+title: Level 0
+---
+`)
+		testutil.WriteFile(t, root, "docs/a/l1.md", `---
+kind: roadmap
+description: Level 1
+title: Level 1
+---
+`)
+		testutil.WriteFile(t, root, "docs/a/b/l2.md", `---
+kind: roadmap
+description: Level 2
+title: Level 2
+---
+`)
+		testutil.WriteFile(t, root, "docs/a/b/c/l3.md", `---
+kind: roadmap
+description: Level 3
+title: Level 3
+---
+`)
+		testutil.WriteFile(t, root, "docs/a/b/c/d/l4.md", `---
+kind: roadmap
+description: Level 4
+title: Level 4
+---
+`)
+
+		results, stderr := runList(t, root, "list", "--root", "docs", "--json")
+		if stderr != "" {
+			t.Fatalf("stderr = %q, want empty", stderr)
+		}
+
+		if len(results) != 4 {
+			t.Fatalf("got %d results, want 4: %v", len(results), results)
+		}
+
+		if results[0].Path != "a/b/c/l3.md" {
+			t.Errorf("results[0].Path = %q, want %q", results[0].Path, "a/b/c/l3.md")
+		}
+
+		if results[3].Path != "l0.md" {
+			t.Errorf("results[3].Path = %q, want %q", results[3].Path, "l0.md")
+		}
+	})
+
+	t.Run("depth zero returns only root documents", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, "docs/root.md", `---
+kind: roadmap
+description: Root doc
+title: Root
+---
+`)
+		testutil.WriteFile(t, root, "docs/sub/nested.md", `---
+kind: adr
+description: Nested doc
+title: Nested
+---
+`)
+
+		results, stderr := runList(t, root, "list", "--root", "docs", "--depth", "0", "--json")
+		if stderr != "" {
+			t.Fatalf("stderr = %q, want empty", stderr)
+		}
+
+		if len(results) != 1 {
+			t.Fatalf("got %d results, want 1: %v", len(results), results)
+		}
+
+		if results[0].Path != "root.md" {
+			t.Errorf("Path = %q, want %q", results[0].Path, "root.md")
+		}
+	})
+
+	t.Run("depth one returns nested level", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, "docs/root.md", `---
+kind: roadmap
+description: Root doc
+title: Root
+---
+`)
+		testutil.WriteFile(t, root, "docs/sub/child.md", `---
+kind: adr
+description: Child doc
+title: Child
+---
+`)
+		testutil.WriteFile(t, root, "docs/sub/deeper/grandchild.md", `---
+kind: design-doc
+description: Grandchild doc
+title: Grandchild
+---
+`)
+
+		results, stderr := runList(t, root, "list", "--root", "docs", "--depth", "1", "--json")
+		if stderr != "" {
+			t.Fatalf("stderr = %q, want empty", stderr)
+		}
+
+		if len(results) != 2 {
+			t.Fatalf("got %d results, want 2: %v", len(results), results)
+		}
+
+		if results[0].Path != "root.md" {
+			t.Errorf("results[0].Path = %q, want %q", results[0].Path, "root.md")
+		}
+
+		if results[1].Path != "sub/child.md" {
+			t.Errorf("results[1].Path = %q, want %q", results[1].Path, "sub/child.md")
+		}
+	})
+
+	t.Run("explicit subtree root makes depth relative to subtree", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, "docs/adr/001.md", `---
+kind: adr
+description: Top doc
+title: Top
+---
+`)
+		testutil.WriteFile(t, root, "docs/adr/archive/002.md", `---
+kind: adr
+description: Nested doc
+title: Nested
+---
+`)
+
+		results, stderr := runList(t, root, "list", "--root", "docs/adr", "--depth", "0", "--json")
+		if stderr != "" {
+			t.Fatalf("stderr = %q, want empty", stderr)
+		}
+
+		if len(results) != 1 {
+			t.Fatalf("got %d results, want 1: %v", len(results), results)
+		}
+
+		if results[0].Path != "001.md" {
+			t.Errorf("Path = %q, want %q", results[0].Path, "001.md")
+		}
+	})
+
+	t.Run("depth composes with kind filter", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, "docs/root-roadmap.md", `---
+kind: roadmap
+description: Root roadmap
+title: Root Roadmap
+---
+`)
+		testutil.WriteFile(t, root, "docs/sub/nested-roadmap.md", `---
+kind: roadmap
+description: Nested roadmap
+title: Nested Roadmap
+---
+`)
+		testutil.WriteFile(t, root, "docs/sub/nested-adr.md", `---
+kind: adr
+description: Nested ADR
+title: Nested ADR
+---
+`)
+
+		results, stderr := runList(t, root, "list", "--root", "docs", "--depth", "0", "--kind", "roadmap", "--json")
+		if stderr != "" {
+			t.Fatalf("stderr = %q, want empty", stderr)
+		}
+
+		if len(results) != 1 {
+			t.Fatalf("got %d results, want 1: %v", len(results), results)
+		}
+
+		if results[0].Path != "root-roadmap.md" {
+			t.Errorf("Path = %q, want %q", results[0].Path, "root-roadmap.md")
+		}
+	})
+
+	t.Run("negative depth exits non-zero", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		cmd := exec.Command(binaryPath, "list", "--depth", "-1", "--json")
+		cmd.Dir = root
+
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+
+		err := cmd.Run()
+		if err == nil {
+			t.Fatalf("expected non-zero exit for negative depth, got success\nstdout: %s", stdout.String())
+		}
+	})
+
+	t.Run("non integer depth exits non-zero", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		cmd := exec.Command(binaryPath, "list", "--depth", "bad", "--json")
+		cmd.Dir = root
+
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+
+		err := cmd.Run()
+		if err == nil {
+			t.Fatalf("expected non-zero exit for invalid depth, got success\nstdout: %s", stdout.String())
+		}
+	})
+}
+
 func TestCLI_List_GitIgnoreContracts(t *testing.T) {
 	t.Parallel()
 
@@ -840,6 +1078,51 @@ title: Ignored
 
 		if results[0].Path != "kept.md" {
 			t.Errorf("Path = %q, want %q", results[0].Path, "kept.md")
+		}
+	})
+
+	t.Run("gitignore still applies when depth is set", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, ".git/HEAD", "ref: refs/heads/main\n")
+		testutil.WriteFile(t, root, ".gitignore", "/docs/ignored/\n")
+		testutil.WriteFile(t, root, "docs/root.md", `---
+kind: roadmap
+description: Root doc
+title: Root
+---
+`)
+		testutil.WriteFile(t, root, "docs/ignored/doc.md", `---
+kind: roadmap
+description: Ignored doc
+title: Ignored
+---
+`)
+		testutil.WriteFile(t, root, "docs/kept/child.md", `---
+kind: roadmap
+description: Kept doc
+title: Kept
+---
+`)
+
+		results, stderr := runList(t, root, "list", "--root", "docs", "--depth", "1", "--json")
+
+		if stderr != "" {
+			t.Fatalf("stderr = %q, want empty", stderr)
+		}
+
+		if len(results) != 2 {
+			t.Fatalf("got %d results, want 2: %v", len(results), results)
+		}
+
+		if results[0].Path != "kept/child.md" {
+			t.Errorf("results[0].Path = %q, want %q", results[0].Path, "kept/child.md")
+		}
+
+		if results[1].Path != "root.md" {
+			t.Errorf("results[1].Path = %q, want %q", results[1].Path, "root.md")
 		}
 	})
 }
@@ -1097,6 +1380,27 @@ title: Hidden
 			t.Errorf("Path = %q, want %q", got.Path, "hidden.md")
 		}
 	})
+}
+
+func TestCLI_Show_DepthDoesNotAffectExplicitPath(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+
+	testutil.WriteFile(t, root, "docs/adr/001.md", `---
+kind: adr
+description: Architecture decision
+title: ADR 001
+---
+Body.
+`)
+
+	var got metadata.Result
+	runShowExpectSuccess(t, root, &got, "show", "--depth", "0", "docs/adr/001.md", "--json")
+
+	if got.Path != "docs/adr/001.md" {
+		t.Errorf("Path = %q, want %q", got.Path, "docs/adr/001.md")
+	}
 }
 
 func TestCLI_Show_PathValidation(t *testing.T) {

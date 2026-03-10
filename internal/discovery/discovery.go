@@ -25,6 +25,11 @@ type Scanner struct {
 	Root string
 }
 
+// ScanOptions configures list-only discovery behavior.
+type ScanOptions struct {
+	MaxDepth *int
+}
+
 type document struct {
 	result metadata.Result
 	body   string
@@ -71,7 +76,7 @@ func (de DiagnosticErrors) Unwrap() []error {
 
 // Scan walks the docs directory, extracts frontmatter, validates, and applies optional kind filter.
 // Valid documents are returned as Results (sorted by path).
-func (s Scanner) Scan(ctx context.Context, kind *metadata.Kind) ([]metadata.Result, error) {
+func (s Scanner) Scan(ctx context.Context, kind *metadata.Kind, options ScanOptions) ([]metadata.Result, error) {
 	results := make([]metadata.Result, 0)
 	diagnostics := make(DiagnosticErrors, 0)
 
@@ -80,7 +85,7 @@ func (s Scanner) Scan(ctx context.Context, kind *metadata.Kind) ([]metadata.Resu
 		return nil, err
 	}
 
-	walk := s.newWalkFunc(ctx, ignorer, kind, &results, &diagnostics)
+	walk := s.newWalkFunc(ctx, ignorer, kind, options, &results, &diagnostics)
 
 	err = fs.WalkDir(os.DirFS(s.Root), ".", walk)
 	if err != nil {
@@ -155,6 +160,7 @@ func (s Scanner) newWalkFunc(
 	ctx context.Context,
 	ignorer pathIgnorer,
 	kind *metadata.Kind,
+	options ScanOptions,
 	results *[]metadata.Result,
 	diagnostics *DiagnosticErrors,
 ) fs.WalkDirFunc {
@@ -167,16 +173,12 @@ func (s Scanner) newWalkFunc(
 			return walkErr
 		}
 
-		if ignorer.Match(path, d.IsDir()) {
-			if d.IsDir() {
-				return fs.SkipDir
-			}
-
-			return nil
+		if d.IsDir() {
+			return handleDir(path, ignorer, options.MaxDepth)
 		}
 
-		if d.IsDir() {
-			return ignorer.EnterDir(path)
+		if ignorer.Match(path, false) {
+			return nil
 		}
 
 		if !strings.HasSuffix(path, ".md") {
@@ -185,6 +187,26 @@ func (s Scanner) newWalkFunc(
 
 		return s.handleFile(path, kind, results, diagnostics)
 	}
+}
+
+func handleDir(path string, ignorer pathIgnorer, maxDepth *int) error {
+	if ignorer.Match(path, true) || exceedsMaxDepth(path, maxDepth) {
+		return fs.SkipDir
+	}
+
+	return ignorer.EnterDir(path)
+}
+
+func exceedsMaxDepth(path string, maxDepth *int) bool {
+	if maxDepth == nil || path == "." {
+		return false
+	}
+
+	return relativeDepth(path) > *maxDepth
+}
+
+func relativeDepth(path string) int {
+	return len(splitRelativePath(path))
 }
 
 func (s Scanner) handleFile(

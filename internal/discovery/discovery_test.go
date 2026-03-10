@@ -14,6 +14,19 @@ import (
 func TestScanner_Scan(t *testing.T) {
 	t.Parallel()
 
+	scanWithDepth := func(
+		t *testing.T,
+		root string,
+		depth int,
+		kind *metadata.Kind,
+	) ([]metadata.Result, error) {
+		t.Helper()
+
+		s := discovery.Scanner{Root: root}
+
+		return s.Scan(t.Context(), kind, discovery.ScanOptions{MaxDepth: &depth})
+	}
+
 	t.Run("valid documents are returned sorted", func(t *testing.T) {
 		t.Parallel()
 
@@ -36,7 +49,7 @@ Body.
 
 		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
 
-		results, err := s.Scan(t.Context(), nil)
+		results, err := s.Scan(t.Context(), nil, discovery.ScanOptions{})
 		if err != nil {
 			t.Fatalf("Scan() error = %v", err)
 		}
@@ -70,7 +83,7 @@ Body content.
 
 		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
 
-		results, err := s.Scan(t.Context(), nil)
+		results, err := s.Scan(t.Context(), nil, discovery.ScanOptions{})
 		if err != nil {
 			t.Fatalf("Scan() error = %v", err)
 		}
@@ -100,7 +113,7 @@ Body content.
 
 		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
 
-		results, err := s.Scan(t.Context(), nil)
+		results, err := s.Scan(t.Context(), nil, discovery.ScanOptions{})
 		if err != nil {
 			t.Fatalf("Scan() error = %v", err)
 		}
@@ -125,7 +138,7 @@ Body content.
 
 		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
 
-		results, err := s.Scan(t.Context(), nil)
+		results, err := s.Scan(t.Context(), nil, discovery.ScanOptions{})
 		if err != nil {
 			t.Fatalf("Scan() error = %v", err)
 		}
@@ -160,7 +173,7 @@ title: ADR
 		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
 		k := metadata.KindRoadmap
 
-		results, err := s.Scan(t.Context(), &k)
+		results, err := s.Scan(t.Context(), &k, discovery.ScanOptions{})
 		if err != nil {
 			t.Fatalf("Scan() error = %v", err)
 		}
@@ -171,6 +184,151 @@ title: ADR
 
 		if results[0].Kind != metadata.KindRoadmap {
 			t.Errorf("Kind = %q, want %q", results[0].Kind, metadata.KindRoadmap)
+		}
+	})
+
+	t.Run("depth zero returns only root documents", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, "docs/root.md", `---
+kind: roadmap
+description: Root doc
+title: Root
+---
+`)
+		testutil.WriteFile(t, root, "docs/sub/nested.md", `---
+kind: adr
+description: Nested doc
+title: Nested
+---
+`)
+
+		results, err := scanWithDepth(t, filepath.Join(root, "docs"), 0, nil)
+		if err != nil {
+			t.Fatalf("Scan() error = %v", err)
+		}
+
+		if len(results) != 1 {
+			t.Fatalf("Scan() returned %d results, want 1", len(results))
+		}
+
+		if results[0].Path != "root.md" {
+			t.Errorf("Path = %q, want %q", results[0].Path, "root.md")
+		}
+	})
+
+	t.Run("depth one returns one nested level", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, "docs/root.md", `---
+kind: roadmap
+description: Root doc
+title: Root
+---
+`)
+		testutil.WriteFile(t, root, "docs/sub/child.md", `---
+kind: adr
+description: Child doc
+title: Child
+---
+`)
+		testutil.WriteFile(t, root, "docs/sub/deeper/grandchild.md", `---
+kind: design-doc
+description: Grandchild doc
+title: Grandchild
+---
+`)
+
+		results, err := scanWithDepth(t, filepath.Join(root, "docs"), 1, nil)
+		if err != nil {
+			t.Fatalf("Scan() error = %v", err)
+		}
+
+		if len(results) != 2 {
+			t.Fatalf("Scan() returned %d results, want 2", len(results))
+		}
+
+		if results[0].Path != "root.md" {
+			t.Errorf("results[0].Path = %q, want %q", results[0].Path, "root.md")
+		}
+
+		if results[1].Path != "sub/child.md" {
+			t.Errorf("results[1].Path = %q, want %q", results[1].Path, "sub/child.md")
+		}
+	})
+
+	t.Run("depth uses subtree root as zero", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, "docs/adr/001.md", `---
+kind: adr
+description: Top doc
+title: Top
+---
+`)
+		testutil.WriteFile(t, root, "docs/adr/archive/002.md", `---
+kind: adr
+description: Nested doc
+title: Nested
+---
+`)
+
+		results, err := scanWithDepth(t, filepath.Join(root, "docs", "adr"), 0, nil)
+		if err != nil {
+			t.Fatalf("Scan() error = %v", err)
+		}
+
+		if len(results) != 1 {
+			t.Fatalf("Scan() returned %d results, want 1", len(results))
+		}
+
+		if results[0].Path != "001.md" {
+			t.Errorf("Path = %q, want %q", results[0].Path, "001.md")
+		}
+	})
+
+	t.Run("depth composes with kind filter", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, "docs/root-roadmap.md", `---
+kind: roadmap
+description: Root roadmap
+title: Root Roadmap
+---
+`)
+		testutil.WriteFile(t, root, "docs/sub/nested-adr.md", `---
+kind: adr
+description: Nested ADR
+title: Nested ADR
+---
+`)
+		testutil.WriteFile(t, root, "docs/sub/nested-roadmap.md", `---
+kind: roadmap
+description: Nested roadmap
+title: Nested Roadmap
+---
+`)
+
+		k := metadata.KindRoadmap
+		results, err := scanWithDepth(t, filepath.Join(root, "docs"), 0, &k)
+		if err != nil {
+			t.Fatalf("Scan() error = %v", err)
+		}
+
+		if len(results) != 1 {
+			t.Fatalf("Scan() returned %d results, want 1", len(results))
+		}
+
+		if results[0].Path != "root-roadmap.md" {
+			t.Errorf("Path = %q, want %q", results[0].Path, "root-roadmap.md")
 		}
 	})
 
@@ -208,7 +366,7 @@ title: ADR
 
 		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
 
-		results, err := s.Scan(t.Context(), nil)
+		results, err := s.Scan(t.Context(), nil, discovery.ScanOptions{})
 		var diagnosticErrs discovery.DiagnosticErrors
 		if !errors.As(err, &diagnosticErrs) {
 			t.Fatalf("Scan() error = %v, want DiagnosticErrors", err)
@@ -239,7 +397,7 @@ title: ADR
 
 		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
 
-		results, err := s.Scan(t.Context(), nil)
+		results, err := s.Scan(t.Context(), nil, discovery.ScanOptions{})
 		if err != nil {
 			t.Fatalf("Scan() error = %v", err)
 		}
@@ -266,7 +424,7 @@ title: Doc
 
 		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
 
-		_, err := s.Scan(ctx, nil)
+		_, err := s.Scan(ctx, nil, discovery.ScanOptions{})
 		// A cancelled context may or may not produce a walk error depending on
 		// file system timing; we only assert that the call does not panic.
 		_ = err
@@ -294,7 +452,89 @@ title: Ignored
 
 		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
 
-		results, err := s.Scan(t.Context(), nil)
+		results, err := s.Scan(t.Context(), nil, discovery.ScanOptions{})
+		if err != nil {
+			t.Fatalf("Scan() error = %v", err)
+		}
+
+		if len(results) != 1 {
+			t.Fatalf("Scan() returned %d results, want 1", len(results))
+		}
+
+		if results[0].Path != "visible.md" {
+			t.Errorf("Path = %q, want %q", results[0].Path, "visible.md")
+		}
+	})
+
+	t.Run("depth still respects gitignored directories", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, ".git/HEAD", "ref: refs/heads/main\n")
+		testutil.WriteFile(t, root, ".gitignore", "/docs/ignored/\n")
+		testutil.WriteFile(t, root, "docs/root.md", `---
+kind: roadmap
+description: Root doc
+title: Root
+---
+`)
+		testutil.WriteFile(t, root, "docs/ignored/doc.md", `---
+kind: roadmap
+description: Ignored doc
+title: Ignored
+---
+`)
+		testutil.WriteFile(t, root, "docs/kept/child.md", `---
+kind: roadmap
+description: Kept doc
+title: Kept
+---
+`)
+
+		results, err := scanWithDepth(t, filepath.Join(root, "docs"), 1, nil)
+		if err != nil {
+			t.Fatalf("Scan() error = %v", err)
+		}
+
+		if len(results) != 2 {
+			t.Fatalf("Scan() returned %d results, want 2", len(results))
+		}
+
+		if results[0].Path != "kept/child.md" {
+			t.Errorf("results[0].Path = %q, want %q", results[0].Path, "kept/child.md")
+		}
+
+		if results[1].Path != "root.md" {
+			t.Errorf("results[1].Path = %q, want %q", results[1].Path, "root.md")
+		}
+	})
+
+	t.Run("depth prunes directories beyond max depth", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+
+		testutil.WriteFile(t, root, "docs/visible.md", `---
+kind: roadmap
+description: Visible doc
+title: Visible
+---
+`)
+		testutil.WriteFile(t, root, "docs/deep/hidden.md", `---
+kind: roadmap
+description: Hidden doc
+title: Hidden
+---
+`)
+		testutil.WriteFile(t, root, "docs/deep/deeper/also-hidden.md", `---
+kind: roadmap
+description: Also hidden doc
+title: Also Hidden
+---
+`)
+
+		results, err := scanWithDepth(t, filepath.Join(root, "docs"), 0, nil)
 		if err != nil {
 			t.Fatalf("Scan() error = %v", err)
 		}
@@ -336,7 +576,7 @@ title: Other
 
 		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
 
-		results, err := s.Scan(t.Context(), nil)
+		results, err := s.Scan(t.Context(), nil, discovery.ScanOptions{})
 		if err != nil {
 			t.Fatalf("Scan() error = %v", err)
 		}
@@ -376,7 +616,7 @@ title: Ignored
 
 		s := discovery.Scanner{Root: filepath.Join(root, "docs", "adr")}
 
-		results, err := s.Scan(t.Context(), nil)
+		results, err := s.Scan(t.Context(), nil, discovery.ScanOptions{})
 		if err != nil {
 			t.Fatalf("Scan() error = %v", err)
 		}
@@ -412,7 +652,7 @@ title: Ignored
 
 		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
 
-		results, err := s.Scan(t.Context(), nil)
+		results, err := s.Scan(t.Context(), nil, discovery.ScanOptions{})
 		if err != nil {
 			t.Fatalf("Scan() error = %v", err)
 		}
@@ -448,7 +688,7 @@ title: Excluded
 
 		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
 
-		results, err := s.Scan(t.Context(), nil)
+		results, err := s.Scan(t.Context(), nil, discovery.ScanOptions{})
 		if err != nil {
 			t.Fatalf("Scan() error = %v", err)
 		}
@@ -485,7 +725,7 @@ title: Excluded
 
 		s := discovery.Scanner{Root: filepath.Join(repoRoot, "docs")}
 
-		results, err := s.Scan(t.Context(), nil)
+		results, err := s.Scan(t.Context(), nil, discovery.ScanOptions{})
 		if err != nil {
 			t.Fatalf("Scan() error = %v", err)
 		}
@@ -508,7 +748,7 @@ title: Excluded
 
 		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
 
-		results, err := s.Scan(t.Context(), nil)
+		results, err := s.Scan(t.Context(), nil, discovery.ScanOptions{})
 		if err != nil {
 			t.Fatalf("Scan() error = %v", err)
 		}
@@ -539,7 +779,7 @@ title: Ignored
 
 		s := discovery.Scanner{Root: filepath.Join(root, "docs")}
 
-		results, err := s.Scan(t.Context(), nil)
+		results, err := s.Scan(t.Context(), nil, discovery.ScanOptions{})
 		if err != nil {
 			t.Fatalf("Scan() error = %v", err)
 		}

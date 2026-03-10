@@ -42,11 +42,15 @@ func (lc *ListCmd) Run(ctx context.Context, root *Root) error {
 		kindFilter = &k
 	}
 
+	if root.Depth < 0 {
+		return fmt.Errorf("invalid depth %d: must be non-negative", root.Depth)
+	}
+
 	s := discovery.Scanner{
 		Root: filepath.Join(cwd, normalizedRoot),
 	}
 
-	results, err := s.Scan(ctx, kindFilter)
+	results, err := s.Scan(ctx, kindFilter, discovery.ScanOptions{MaxDepth: &root.Depth})
 	var diagnosticErrs discovery.DiagnosticErrors
 	if err != nil && !errors.As(err, &diagnosticErrs) {
 		return fmt.Errorf("scan: %w", err)

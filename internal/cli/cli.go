@@ -14,6 +14,7 @@ type Root struct {
 	DiagnosticLogger *slog.Logger `kong:"-"`
 
 	Root    string  `help:"Directory to scan, relative to the current directory." default:"." name:"root"`
+	Depth   int     `help:"Limit pd list traversal depth relative to discovery root." default:"3" name:"depth"`
 	Verbose bool    `help:"Emit list diagnostics to stderr." name:"verbose"`
 	List    ListCmd `cmd:"" help:"List discovery metadata from docs directory."`
 	Show    ShowCmd `cmd:"" help:"Show discovery metadata for a single document."`
