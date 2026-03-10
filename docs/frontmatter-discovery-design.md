@@ -19,9 +19,8 @@ frontmatter は本文要約の置き場ではなく、LLM や agent が「この
 ### Scope
 
 - `docs/**/*.md` から frontmatter を読み取る discovery 入口
-- `kind` / `status` / `canonical` / `tags` を使った metadata 一覧化と絞り込み
+- `kind` を使った metadata 一覧化と絞り込み
 - 単一文書の metadata 表示と、必要時だけ本文表示へ進む二段階導線
-- `related` をたどるための read-only discovery 入口
 - malformed frontmatter や schema 不一致を fail-closed で扱う方針
 - discovery metadata の最小フィールドを前提にした read path の固定
 
@@ -42,7 +41,7 @@ frontmatter は本文要約の置き場ではなく、LLM や agent が「この
 - discovery reader
   - `docs/**/*.md` を走査し、frontmatter を安定抽出する
 - metadata selector
-  - `kind` / `status` / `canonical` / `tags` / `related` を機械可読に返す
+  - `kind` を機械可読に返す
 - body escalation
   - metadata で候補決定後にだけ本文表示へ進ませる
 - caller
@@ -53,15 +52,8 @@ frontmatter は本文要約の置き場ではなく、LLM や agent が「この
 - required fields
   - `kind`
   - `description`
-  - `status`
 - optional fields
   - `title`
-  - `canonical`
-  - `read_when`
-  - `not_for`
-  - `tags`
-  - `related`
-  - `metadata_reviewed_at`
 
 このテーマで reader が依存してよいのは上記の frontmatter だけとする。唯一の例外として、`title` が未指定の場合に限り本文の最初の H1 を display identity として取得する。`title` も H1 もない文書は invalid とする。ファイル名や本文冒頭の散文からの追加推論は行わない。
 
@@ -70,20 +62,27 @@ frontmatter は本文要約の置き場ではなく、LLM や agent が「この
 - discovery reader は本文内容を解釈して metadata を補完しない。ただし `title` 未指定時の H1 fallback は許可する
 - selector は read-only に徹し、frontmatter を修正しない
 - body escalation は本文を返せるが、discovery 判定を本文依存に戻さない
-- `related` は参照候補の提示に使うが、正本判定は `canonical` と `status` を優先する
+- 文書間の関連づけや正本判定の責務は持たない。必要なら Markdown 本文や将来の別テーマで扱う
 
 ### Minimal interface
 
 - `pd list --json`
-- `pd list --kind <kind> --status <status> --json`
+- `pd list --kind <kind> --json`
 - `pd show <path> --json`
 - `pd show <path> --body`
-- `pd related <path> --json`
+
+### Error contract
+
+- invalid document は標準出力に混ぜず、`stderr` に JSON で出す
+- `pd show` の失敗理由は標準出力に混ぜず、`stderr` に JSON で出す
+- JSON error は command 名、対象 path、machine-readable な reason を含む
+- batch command は valid result を `stdout` に出しつつ、invalid ごとの error JSON を `stderr` に出して継続する
+- single-document command は error JSON を `stderr` に出し、non-zero exit で失敗する
 
 ## ADR References
 
 - [ADR-005](docs/adr/005-frontmatter-minimal-schema.md): frontmatter の最小必須 schema
-- [ADR-006](docs/adr/006-frontmatter-discovery-semantics.md): `kind` / `status` / `canonical` の semantics
+- [ADR-006](docs/adr/006-frontmatter-discovery-semantics.md): `kind` の discovery semantics
 - [ADR-007](docs/adr/007-frontmatter-invalid-discovery-behavior.md): invalid frontmatter の command failure model
 - [ADR-008](docs/adr/008-frontmatter-reader-technology.md): reader の parser / fallback 技術選定
 - [ADR-009](docs/adr/009-frontmatter-cli-and-validation-technology.md): CLI / decode / validation 技術選定
@@ -93,10 +92,11 @@ frontmatter は本文要約の置き場ではなく、LLM や agent が「この
 - Markdown 本体以外を SSoT にしない
 - discovery metadata は本文要約の重複にしない
 - malformed frontmatter は fail-open にせず、valid document として扱わない。batch command はファイル単位で invalid とし継続、single-document command は non-zero exit で失敗させる
+- invalid や command failure の理由は human-only stderr text にせず、`stderr` JSON で機械可読に返す
 - `title` 不在時は H1 fallback のみ許可し、両方不在なら invalid とする。ファイル名や散文からの推論は禁止する
-- `canonical` と `status` を無視して本文読みに誘導しない
 - 本文を広く読む前に metadata を確認できる導線を壊さない
 - 更新責務を混在させない。このテーマでは read-only 入口だけを固定する
+- `canonical` と `related` はこのテーマで field として持ち込まない
 - 実装は標準ライブラリを第一選択とし、非標準依存は ADR で固定された責務を直接満たす場合に限る
 - helper concern のために convenience dependency を広げない。file walking、path handling、JSON、error modeling、filtering、validation orchestration は std を使う
 
@@ -104,36 +104,39 @@ frontmatter は本文要約の置き場ではなく、LLM や agent が「この
 
 ### Required verification coverage
 
-- `static + integration`
+- この discovery 入口では `static + integration` を required verification coverage とする
+- `system` は、この設計が end-to-end の user flow 自体を直接扱う範囲に拡張されない限り要求しない
 
 ### Static
 
 - frontmatter schema を表す型と decode 経路が一致すること
-- unsupported field shape を silent accept しないこと
-- CLI 出力契約が機械可読 JSON として安定していること
+- unknown field や unsupported field shape を silent accept しないこと
+- `kind` の語彙と validation 契約が一致すること
 
 ### Integration
 
 - valid frontmatter を持つ複数文書から metadata 一覧を取得できること
-- `kind` / `status` / `canonical` / `tags` で絞り込みできること
+- `kind` で絞り込みできること
 - `pd show --json` では metadata のみ、`pd show --body` では本文まで進めること
-- malformed frontmatter、missing required field、duplicate canonical を reject できること
-- `related` が存在しない path を含むとき、discovery 信号として不正を返せること
+- malformed frontmatter、missing required field、unknown field、unknown `kind`、`title` 不在かつ H1 不在、show 対象不在を reject できること
+- invalid document と `pd show` failure reason が `stderr` JSON で観測できること
+- CLI 出力契約が `stdout` success JSON / `stderr` error JSON として安定していること
 
 ### Gate intent
 
 - `static`
   - schema drift、decode 漏れ、禁止 field shape の見逃しを reject する
 - `integration`
-  - discovery 不達、canonical 判定不安定、body escalation の責務混在を reject する
+  - discovery 不達、error contract 不安定、body escalation の責務混在を reject する
 
 ## TODO Input
 
-この Design Doc から切り出せる縦テーマ候補は次の通り。
+この Design Doc から評価対象として切り出せる縦テーマ候補は次の通り。
 
-- metadata 一覧から active / canonical な候補文書を安定選別できる
+- metadata 一覧から `kind` ベースで候補文書を安定選別できる
 - 単一文書の metadata を見てから本文読みに進める
-- `related` を discovery 導線として追跡できる
+
+`stderr` JSON の error contract は独立 Theme にはせず、各候補で `Reject if` と `Verification` を決めるための前提条件として扱う。
 
 `Now` に進める候補は、最小の `list` / `show` 系で discovery の妥当性を最速検証できるものを優先する。
 
@@ -141,18 +144,18 @@ frontmatter は本文要約の置き場ではなく、LLM や agent が「この
 
 - `static`
   - frontmatter decode 契約
-  - required field 欠落時の失敗条件
+  - required field 欠落、unknown field、unknown `kind`、`title` 不在かつ H1 不在の失敗条件
 - `integration`
-  - `list` / `show` / `related` のシナリオ
-  - duplicate canonical、invalid status、broken related の reject 条件
-
-required verification coverage の各 gate に対し、`executor/check identifier + case identifier + pass/fail + replay handle` を残せるテスト実行面を用意する。
+  - `list` / `show` のシナリオ
+  - invalid frontmatter、missing required field、unknown field、unknown `kind`、`title` 不在かつ H1 不在、show 対象不在の reject 条件
+  - `stderr` JSON emission の reject 条件
 
 ## Execution Input
 
-- 実装順は `reader -> selector -> show/body escalation -> related`
-- 最初に失敗させる verification は malformed frontmatter と duplicate canonical の integration test
+- TODO 作成へ進む前に、候補ごとの required verification coverage を明示できること
+- `list` 系と `show` 系の候補について、それぞれ `Outcome` と `Why not split further?` を後続で定義可能と判断できること
 - stop condition は次をすべて満たした時点
-  - metadata だけで読むべき文書を絞れる
-  - 本文読みが `show --body` に明示分離されている
-  - required verification coverage に `reject-now` と `need-evidence` が残らない
+  - `status` に依存する未確定判断が残っていない
+  - `TODO Input` が縦テーマ候補として評価可能な粒度になっている
+  - Gate owner ごとの reject 条件を後続で定義できる
+  - `WORKFLOW.md` の Gate で `reject-now` と `need-evidence` が残らない

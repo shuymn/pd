@@ -6,23 +6,25 @@ Accepted
 
 ## Context
 
-frontmatter discovery では、構文エラーだけでなく semantic integrity の崩れも invalid として扱う必要がある。例として required field の欠落、未知 enum、`related` のリンク切れ、選別に影響する `canonical` の不整合がある。
+frontmatter discovery では、構文エラーだけでなく semantic integrity の崩れも invalid として扱う必要がある。例として required field の欠落、未知 enum、`title` 不在かつ H1 不在がある。
 
 このとき command 全体を常に失敗させると repo-wide discovery が運用しにくくなる。一方で best-effort で黙殺すると、壊れた metadata が routing signal として混ざる。
 
 コマンド形態ごとに失敗の粒度を固定する必要がある。
 
+CLI 利用と機械処理の両方を安定させるため、error は JSON として返す必要がある。また `related` / `canonical` 起因の invalid は、それらの field をこの discovery scope に含めないため対象外とする。
+
 ## Decision
 
 ### Batch discovery commands
 
-`pd list` や `pd related` のような batch discovery command は、不正文書があっても command 全体は継続する。
+`pd list` のような batch discovery command は、不正文書があっても command 全体は継続する。
 
-不正文書は document 単位で invalid として扱い、diagnostics に invalid reason を出す。黙って無視しない。
+不正文書は document 単位で invalid として扱い、`stderr` に JSON で invalid reason を出す。黙って無視しない。
 
 ### Single-document command
 
-`pd show <path>` は対象文書が invalid な場合、non-zero exit で失敗させる。失敗時は invalid reason を返す。
+`pd show <path>` は対象文書が invalid な場合や対象解決に失敗した場合、non-zero exit で失敗させる。失敗時は `stderr` に JSON で reason を返す。
 
 ### Invalid discovery state
 
@@ -31,12 +33,11 @@ frontmatter discovery では、構文エラーだけでなく semantic integrity
 - required field の欠落
 - 許可されていない enum value
 - `title` 不在かつ H1 不在
-- `related` に存在しない path が含まれる状態
-- selection の正しさを壊す `canonical` の競合
 
 ## Consequences
 
 - repo-wide discovery では不正文書があっても有効文書の探索を継続できる
 - 単一文書の検査では失敗が終了コードに反映されるため、CLI 利用者が invalid を見落としにくい
+- invalid と command failure の両方が `stderr` JSON になるため、human-readable text への依存を避けられる
 - implementation は batch と single-target で error handling を分ける必要がある
-- diagnostics の wire shape は将来調整できるが、invalid を黙殺しないという契約は固定される
+- diagnostics は `stderr` JSON で返す契約を固定できる
