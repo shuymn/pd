@@ -30,6 +30,7 @@ linters:
     - intrange
     - misspell
     - nilerr
+    - nilnil
     - noctx
     - nolintlint
     - predeclared
@@ -131,6 +132,9 @@ linters:
     govet:
       enable:
         - shadow
+
+    nilnil:
+      only-two: false
 
     nolintlint:
       # Force every suppression to explain intent so review can distinguish
