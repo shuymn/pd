@@ -1,20 +1,6 @@
 <!-- Maintenance: Update when tasks, hooks, or project scope changes. -->
 <!-- Audience: All docs under docs/ and this file are written for coding agents (LLMs), not humans. Use direct instructions, not tutorials or explanations of concepts the agent already knows. Apply this rule when creating or updating any documentation. -->
 
-## Development Style
-
-- Follow the procedure defined in `WORKFLOW.md` unless the user explicitly requests a different workflow.
-- Develop with TDD (exploration → Red → Green → Refactoring).
-- When KPI or coverage targets are given, keep iterating until they are met.
-- If instructions are unclear, ask questions to clarify them.
-
-## Code Design
-
-- Maintain separation of concerns.
-- Separate state from logic.
-- Prioritize readability and maintainability.
-- Define the contract layer (APIs/types) strictly, and keep the implementation layer regenerable.
-
 ## Build, Test, and Development Commands
 
 - Use Task (Taskfile.yml) as the default interface; run `task` to list all tasks, `task --summary <name>` for details
@@ -29,11 +15,14 @@
 - When asked to commit without a specific format, follow Conventional Commits: `<type>(<scope>): <imperative summary>`
 - Never use `--no-verify` when committing or pushing; fix the underlying hook failure instead
 
-## Documentation Scope
+<!-- Maintenance: Keep this file limited to always-on repository rules. Treat files under docs/ as opt-in reference; do not read them unless a rule below applies. -->
 
-- Keep this file limited to always-on repository rules.
-- Treat files under `docs/` as opt-in reference material; do not read them by default.
-- Read `docs/coding.md`, `docs/testing.md`, or `docs/tooling.md` only when the user explicitly asks or the task points to them.
+## Required Reading Before Code Changes
+
+- Read `docs/coding.md` before writing or fixing code, including lint fixes.
+- Read `docs/testing.md` before writing or fixing tests.
+- Read `docs/tooling.md` when configuring tools or CI.
+- Skip only when the task is purely non-code (e.g., documentation, git operations).
 - Read `docs/review.md` only for code review or when the user explicitly asks for broader review conventions.
 - Read `docs/adr/` only when historical rationale matters.
 - Read `docs/plans/` only when implementing or updating an approved design or plan.
