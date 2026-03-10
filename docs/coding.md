@@ -1,3 +1,8 @@
+---
+kind: coding
+description: Use this file only when the task explicitly points to repository-specific implementation rules.
+---
+
 # Coding Conventions
 
 Use this file only when the task explicitly points to repository-specific implementation rules.
