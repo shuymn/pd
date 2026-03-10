@@ -21,7 +21,8 @@ Run `pd` from the directory you want to inspect.
 Usage: pd <command> [flags]
 
 Flags:
-  --root="."    Directory to scan, relative to the current directory.
+  --root="."       Directory to scan, relative to the current directory.
+  --verbose        Emit list diagnostics to stderr.
 
 Commands:
   list    List discovery metadata from docs directory.
@@ -30,10 +31,11 @@ Commands:
 
 ### `pd list`
 
-Lists all valid documents under `--root` and outputs a JSON array to stdout. In directories managed by Git, files and directories ignored by `.gitignore` or `.git/info/exclude` are skipped. Invalid documents are reported as JSON to stderr.
+Lists all valid documents under `--root` and outputs a JSON array to stdout. In directories managed by Git, files and directories ignored by `.gitignore` or `.git/info/exclude` are skipped. Invalid documents are hidden by default and can be emitted as JSON to stderr with `--verbose`.
 
 ```bash
 pd list
+pd list --verbose
 pd list --kind adr
 pd list --root docs/adr
 ```
@@ -47,7 +49,7 @@ Valid `--kind` values: `roadmap`, `design-doc`, `adr`, `coding`, `testing`, `too
 ]
 ```
 
-**stderr** (invalid documents, non-fatal):
+**stderr** (`--verbose` only, invalid documents, non-fatal):
 ```json
 {"path": "docs/draft.md", "reason": "missing required field: kind"}
 ```

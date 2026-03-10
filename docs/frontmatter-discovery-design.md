@@ -76,10 +76,11 @@ frontmatter は本文要約の置き場ではなく、LLM や agent が「この
 
 ### Error contract
 
-- invalid document は標準出力に混ぜず、`stderr` に JSON で出す
+- `pd list` の invalid document は標準出力に混ぜず、通常実行では非表示にする
+- `pd list --verbose` は invalid document を `stderr` に JSON で出す
 - `pd show` の失敗理由は標準出力に混ぜず、`stderr` に JSON で出す
 - JSON error は対象 path、machine-readable な reason を含む
-- batch command は valid result を `stdout` に出しつつ、invalid ごとの error JSON を `stderr` に出して継続する
+- batch command は valid result を `stdout` に出して継続し、invalid ごとの error JSON は opt-in な `--verbose` でだけ `stderr` に出す
 - single-document command は error JSON を `stderr` に出し、non-zero exit で失敗する
 
 ## ADR References
@@ -123,8 +124,8 @@ frontmatter は本文要約の置き場ではなく、LLM や agent が「この
 - `kind` で絞り込みできること
 - `pd show --json` では metadata のみ、`pd show --body` では本文まで進めること
 - malformed frontmatter、missing required field、unknown field、unknown `kind`、`title` 不在かつ H1 不在、show 対象不在を reject できること
-- invalid document と `pd show` failure reason が `stderr` JSON で観測できること
-- CLI 出力契約が `stdout` success JSON / `stderr` error JSON として安定していること
+- `pd list --verbose` の invalid document と `pd show` failure reason が `stderr` JSON で観測できること
+- CLI 出力契約が `stdout` success JSON / `pd list --verbose` のみ `stderr` diagnostic JSON / `pd show` failure `stderr` error JSON として安定していること
 
 ### Gate intent
 
