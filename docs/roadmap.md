@@ -1,6 +1,6 @@
 # Roadmap
 
-## Now
+## Done
 
 ### Theme
 
@@ -9,8 +9,11 @@ Markdown repository を frontmatter ベースで安定 discovery できる入口
 - Outcome: LLM が `docs/**/*.md` を本文の偶然的な冒頭ではなく metadata から絞り込み、読むべき文書を安定して選べる。
 - Outcome note: 最初の固定対象は `kind` 中心の最小 schema に絞る。
 - Why it matters: `ls` / `cat | head` 依存の探索だと文書種別、正本性、deprecated 文書の判別が不安定で、repo 内知識の利用精度が落ちる。
-- Horizon: Now
+- Horizon: Done
 - Promotion trigger: Markdown 本体を唯一の SSoT に保ったまま、最低限の frontmatter schema と metadata 読み取り体験を固定したい段階になったら `Design Doc` 化する。
+- Delivered: `pd list --json` / `pd list --kind <kind> --json` で discovery metadata 一覧と kind 絞り込みを提供。`pd show <path> --json` / `--body` で単一文書の metadata と本文を段階的に開示。invalid document は stderr JSON で報告し non-zero exit で終了する。
+
+## Now
 
 ### Theme
 

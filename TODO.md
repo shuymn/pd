@@ -18,7 +18,7 @@ Source: [Frontmatter-Based Discovery Entry](docs/frontmatter-discovery-design.md
     - [integration] CLI 出力契約が stdout success JSON / stderr error JSON として安定しない
   - Why not split further?: discovery reader と kind filtering は同一の read path 上にあり、reader だけでは外から観測可能な Outcome がない。error contract も list の出力契約と不可分であり、分離すると integration gate が成立しない。
 
-- [ ] Theme: 単一文書の metadata を見てから本文読みに進める
+- [x] Theme: 単一文書の metadata を見てから本文読みに進める
   - Outcome: `pd show <path> --json` が対象文書の discovery metadata のみを返し、`pd show <path> --body` が本文まで含めて返す。対象不在や invalid frontmatter は stderr JSON で報告し non-zero exit で失敗する。
   - Why now: list 系で discovery reader が成立した後、body escalation の導線を検証する次の最小テーマ。metadata 確認後にだけ本文読みに進める二段階導線の設計妥当性を検証する。
   - Verification: static + integration
