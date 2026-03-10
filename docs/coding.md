@@ -19,6 +19,34 @@ Use this file only when the task explicitly points to repository-specific implem
 - Prefer synchronous functions. Add concurrency at the caller boundary unless the API is inherently asynchronous.
 - Define interfaces in the consuming package and return concrete types from constructors.
 
+## Imports
+
+- Avoid package aliases. Use them only when an import path conflict makes the default name ambiguous.
+- When an alias is required, form it from the last two path segments concatenated: `github.com/shuymn/pd/internal/metadata` → `internalmetadata`.
+- Do not rename the package itself to sidestep a conflict (e.g. declaring `package internalmetadata`). Prefer an alias over a distorted package name.
+
+## Variable Shadowing
+
+- Fix shadow lint errors by pre-declaring the new variable with `var` and switching `:=` to `=`. Do not rename `err` (e.g., `kindErr`).
+
+```go
+// Bad – renames err to avoid shadow
+k, kindErr := metadata.ParseKind(*cmd.Kind)
+
+// Bad – re-declares err with :=
+k, err := metadata.ParseKind(*cmd.Kind)
+
+// Good – pre-declare k, reuse err
+var k metadata.Kind
+k, err = metadata.ParseKind(*cmd.Kind)
+```
+
+## Comments and Receivers
+
+- Every exported identifier (type, func, var, const) must have a doc comment starting with the identifier name.
+- Receiver names must be an abbreviation of the type name (typically its first letter or two). Never use generic names such as `cmd`, `self`, or `this`.
+- Use a value receiver only when all methods leave the type immutable and the struct is small. Add a `// NOTE:` comment on the type explaining the rationale and the conditions for switching to a pointer receiver: a mutating method is added, the struct exceeds ~4 fields, or the type appears in hot copy paths.
+
 ## Struct Discipline
 
 - Types named `Config`, `Options`, `Params`, `Query`, or `Event` are treated as configuration or data boundaries.
