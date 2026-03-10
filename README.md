@@ -15,10 +15,11 @@ Example `AGENTS.md` / `CLAUDE.md` snippet:
 ## Requirements
 
 - Go 1.25+
-## Build
+
+## Installation
 
 ```bash
-task build
+go install github.com/shuymn/pd@latest
 ```
 
 ## Usage
@@ -89,7 +90,7 @@ Each document must have a YAML frontmatter block:
 ```markdown
 ---
 kind: adr
-title: "Adopt goccy/go-yaml"       # optional — falls back to first H1 heading
+title: "Adopt shuymn/pd" # optional — falls back to first H1 heading
 description: "Decision rationale."
 ---
 ```
