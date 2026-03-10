@@ -49,7 +49,10 @@ CLI framework 以外の周辺処理は標準ライブラリを優先する。
 - error wrapping
 - output formatting の基本処理
 
+ただし Git 管理下のディレクトリで `pd list` が `.gitignore` と `.git/info/exclude` を尊重する責務は、Git ignore semantics を正しく再現する必要があるため例外的に `github.com/go-git/go-git/v5/plumbing/format/gitignore` を導入してよい。
+
 path scope は current working directory 基準で扱う。`--root` の default は `.` とし、`pd show` の `<path>`、`pd list` / `pd show` の success metadata、diagnostics の `path` はすべて選択された discovery root 相対で扱う。`../` による current working directory 外参照は reject し、absolute path は current working directory 配下の場合のみ許可する。
+`pd list` の探索対象は Git 管理下のディレクトリでは `.gitignore` と `.git/info/exclude` を尊重し、ignore された path を走査対象から除外する。`pd show` は明示 path 指定を優先し、ignore 状態では reject しない。
 
 ## Rejected alternatives
 
@@ -72,7 +75,8 @@ path scope は current working directory 基準で扱う。`--root` の default 
 - unknown field rejection のため追加 YAML dependency が本当に必要かは実装で見極める余地を残せる
 - CLI は `kong` により subcommand / flag 定義を明示できる
 - Git repository 探索を不要にし、current working directory 配下だけを見る単純な CLI 契約にできる
+- Git 管理下のディレクトリでは ignore semantics を discovery scan に反映でき、`.cache/` などの不要走査を避けられる
 - `list` / `show` / diagnostics の path surface を常に discovery root 基準に揃えられ、機械処理の接続性を高められる
 - writer / curation helper / `pd related` は実装対象に含めず、read-only discovery に責務を限定できる
 - semantic validation の中心は `kind` と invalid discovery state になり、追加 routing field は別判断として切り離せる
-- 非標準依存の追加は `adrg/frontmatter`、`goldmark`、`kong`、`goccy/go-yaml` に限定され、その他は std 優先で進める
+- 非標準依存の追加は `adrg/frontmatter`、`goldmark`、`kong`、`goccy/go-yaml`、Git ignore semantics 用の `go-git` に限定され、その他は std 優先で進める

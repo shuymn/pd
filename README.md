@@ -30,7 +30,7 @@ Commands:
 
 ### `pd list`
 
-Lists all valid documents under `--root` and outputs a JSON array to stdout. Invalid documents are reported as JSON to stderr.
+Lists all valid documents under `--root` and outputs a JSON array to stdout. In directories managed by Git, files and directories ignored by `.gitignore` or `.git/info/exclude` are skipped. Invalid documents are reported as JSON to stderr.
 
 ```bash
 pd list
