@@ -31,6 +31,7 @@ Usage: pd <command> [flags]
 
 Flags:
   --root="."       Directory to scan, relative to the current directory.
+  --depth=3        Limit pd list traversal depth relative to discovery root.
   --verbose        Emit list diagnostics to stderr.
 
 Commands:
@@ -40,13 +41,15 @@ Commands:
 
 ### `pd list`
 
-Lists all valid documents under `--root` and outputs a JSON array to stdout. In directories managed by Git, files and directories ignored by `.gitignore` or `.git/info/exclude` are skipped. Invalid documents are hidden by default and can be emitted as JSON to stderr with `--verbose`.
+Lists all valid documents under `--root` and outputs a JSON array to stdout. By default, traversal stops at depth 3 relative to the discovery root. In directories managed by Git, files and directories ignored by `.gitignore` or `.git/info/exclude` are skipped. Invalid documents are hidden by default and can be emitted as JSON to stderr with `--verbose`.
 
 ```bash
 pd list
 pd list --verbose
+pd list --depth 1
 pd list --kind adr
 pd list --root docs/adr
+pd list --root docs/adr --depth 1
 ```
 
 Valid `--kind` values: `roadmap`, `design-doc`, `adr`, `coding`, `testing`, `tooling`, `review`, `unknown`

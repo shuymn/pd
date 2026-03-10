@@ -72,11 +72,13 @@ frontmatter は本文要約の置き場ではなく、LLM や agent が「この
 ### Minimal interface
 
 - `pd list --json`
+- `pd list --depth <n> --json`
 - `pd list --kind <kind> --json`
 - `pd show <path> --json`
 - `pd show <path> --body`
 
 `pd` の path surface は常に discovery root 相対とする。`--root` 未指定時は discovery root が current working directory の `.`、`--root` 明示時は指定した subtree になる。`pd show` の入力 path、`pd list` / `pd show` の success metadata、diagnostics の `path` はすべてその discovery root 相対で扱う。
+`pd list` は `--depth` で walk 範囲を discovery root 相対に制限でき、未指定時の既定値は `3` とする。`0` は root 直下、`1` は 1 階層下までを対象にする。`pd show` は明示 path 指定を優先し、`--depth` 指定の有無で解決結果を変えない。
 `pd list` の走査対象は Git 管理下のディレクトリでは `.gitignore` と `.git/info/exclude` を尊重する。一方で `pd show` は明示指定を優先し、ignore された path でも discovery root 内に存在すれば表示可能とする。
 
 ### Error contract
@@ -126,6 +128,7 @@ frontmatter は本文要約の置き場ではなく、LLM や agent が「この
 
 - valid frontmatter を持つ複数文書から metadata 一覧を取得できること
 - Git 管理下のディレクトリでは `.gitignore` や `.git/info/exclude` で除外された Markdown を `list` が列挙しないこと
+- `pd list --depth 0/1` が discovery root 相対の深さで walk を剪定すること
 - `kind` で絞り込みできること
 - `pd show --json` では metadata のみ、`pd show --body` では本文まで進めること
 - malformed frontmatter、missing required field、unknown field、unknown `kind`、`title` 不在かつ H1 不在、show 対象不在を reject できること
