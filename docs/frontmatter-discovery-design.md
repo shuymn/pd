@@ -75,7 +75,7 @@ frontmatter は本文要約の置き場ではなく、LLM や agent が「この
 
 - invalid document は標準出力に混ぜず、`stderr` に JSON で出す
 - `pd show` の失敗理由は標準出力に混ぜず、`stderr` に JSON で出す
-- JSON error は command 名、対象 path、machine-readable な reason を含む
+- JSON error は対象 path、machine-readable な reason を含む
 - batch command は valid result を `stdout` に出しつつ、invalid ごとの error JSON を `stderr` に出して継続する
 - single-document command は error JSON を `stderr` に出し、non-zero exit で失敗する
 
