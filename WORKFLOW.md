@@ -16,16 +16,20 @@
 
 ### Roadmap
 
-まだ `Design Doc` 化するには早いが、揮発させたくないアイデアを保持する。
+長期テーマ、到達像、進行順のラフな方向を保持する。まだ `Design Doc` 化するには早いが、単なるアイデアメモではなく「どこへ進むか」を示す。
 
-- `Idea`
-  何をやりたいか。まだ設計に落ちていない構想を短く書く。
+- `Theme`
+  どの長期テーマを前進させるかを書く。
+- `Outcome`
+  そのテーマが進むと何ができるようになるかを書く。
 - `Why it matters`
-  それがなぜ必要か、何が前進するかを書く。
+  なぜそれが重要か、何を前進させるかを書く。
+- `Horizon`
+  `Now / Next / Later` のどこに置くかを書く。
 - `Promotion trigger`
   どの条件が揃ったら `Design Doc` 化するかを書く。
 
-`Roadmap` には固定技術選定、実装順、細粒度タスク、`Reject if` を書かない。
+`Roadmap` には固定技術選定、実装順の詳細、細粒度タスク、`Reject if` を書かない。
 
 ### Design Doc
 
@@ -200,27 +204,3 @@ required verification coverage の全 gate に `reject-now` と `need-evidence` 
 1. static analysis
 2. required verification coverage に含まれる unit / integration / system
 3. gate owner は `static | unit | integration | system` のみとする
-
----
-
-## Promotion Criteria
-
-`WORKFLOW.md` を昇格済み文書として維持する条件は、次が即答できること。
-
-- `Roadmap -> Design Doc -> TODO.md -> Plan Mode -> 実装` の流れ
-- `ADR` と `Design Doc` が衝突したときの authority
-- `Design Doc` に残すべき判断
-- `Design Doc -> TODO` の切り方
-- Theme が `Plan Mode` に進んでよい条件
-- verification taxonomy
-- `Reject if` の owner gate
-- 各 verification level の evidence shape
-- `Why not split further?` の役割
-- `Divergent Review -> Convergent Gate` の流れ
-
-次が残るなら rewrite 不十分とみなす。
-
-- 同じ意味の節が複数ある
-- 抽象語が多く、入力判定に落ちていない
-- 実運用で使うテンプレートと昇格条件が見えない
-- 追記の履歴が文書に残っている
