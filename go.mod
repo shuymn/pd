@@ -2,7 +2,7 @@ module github.com/shuymn/pd
 
 go 1.25
 
-toolchain go1.26.1
+toolchain go1.26.2
 
 require (
 	github.com/adrg/frontmatter v0.2.0
