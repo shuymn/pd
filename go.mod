@@ -9,7 +9,7 @@ require (
 	github.com/alecthomas/kong v1.16.1
 	github.com/go-git/go-git/v5 v5.19.2
 	github.com/goccy/go-yaml v1.19.2
-	github.com/yuin/goldmark v1.8.5
+	github.com/yuin/goldmark/v2 v2.0.0
 )
 
 require (
